@@ -17,10 +17,9 @@ func StartHttpServer(opts *options.Options) {
 // Check that we can open a TPC connection to all the ports in opts.Ports
 func checkTcpPorts(w http.ResponseWriter, r *http.Request, opts *options.Options) {
 	logger := opts.Logger
+	logger.Infof("Received inbound request. Beginning health checks...")
 
 	allPortsValid := true
-
-	logger.Infof("Received inbound request. Beginning health checks...")
 
 	for _, port := range opts.Ports {
 		err := attemptTcpConnection(port, opts)

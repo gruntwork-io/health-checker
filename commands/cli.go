@@ -12,14 +12,11 @@ func CreateCli(version string) *cli.App {
 
 	app.CustomAppHelpTemplate = ` NAME:
     {{.Name}} - {{.Usage}}
-    {{if len .Authors}}
- AUTHOR(S):
-    {{range .Authors}}{{ . }}{{end}}
 
  USAGE:
-    {{.HelpName}} {{if .Flags}}[parameters]{{end}}
-    {{end}}{{if .Commands}}
- PARAMETERS:
+    {{.HelpName}} {{if .Flags}}[options]{{end}}
+    {{if .Commands}}
+ OPTIONS:
     {{range .Flags}}{{.}}
     {{end}}{{end}}{{if .Copyright }}
  COPYRIGHT:
@@ -27,12 +24,15 @@ func CreateCli(version string) *cli.App {
     {{end}}{{if .Version}}
  VERSION:
     {{.Version}}
-    {{end}}
+    {{end}}{{if len .Authors}}
+ AUTHOR(S):
+    {{range .Authors}}{{ . }}{{end}}
+	{{end}}
 `
 
 	app.Name = "health-checker"
 	app.HelpName = app.Name
-	app.Author = "Gruntwork <www.gruntwork.io>"
+	app.Author = "Gruntwork, Inc. <www.gruntwork.io> | https://github.com/gruntwork-io/health-checker"
 	app.Version = version
 	app.Usage = "A simple HTTP server that returns a 200 OK when all given TCP ports accept inbound connections."
 	app.Commands = nil
@@ -43,6 +43,10 @@ func CreateCli(version string) *cli.App {
 }
 
 func runHealthChecker(cliContext *cli.Context) error {
+	if allCliOptionsEmpty(cliContext) {
+		cli.ShowAppHelpAndExit(cliContext, 0)
+	}
+
 	opts, err := parseOptions(cliContext)
 	if isSimpleError(err) {
 		return err
@@ -55,6 +59,5 @@ func runHealthChecker(cliContext *cli.Context) error {
 	opts.Logger.Infof("Listening on Port %s...", opts.Listener)
 	server.StartHttpServer(opts)
 
-	// When an HTTP request comes in, open a TCP health check
 	return nil
 }

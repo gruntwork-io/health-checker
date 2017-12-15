@@ -34,6 +34,11 @@ var defaultFlags = []cli.Flag{
 	logLevelFlag,
 }
 
+// Return true if all no options at all were passed to the CLI
+func allCliOptionsEmpty(cliContext *cli.Context) bool {
+	return cliContext.NumFlags() == 0
+}
+
 // Parse and validate all CLI options
 func parseOptions(cliContext *cli.Context) (*options.Options, error) {
 	logger := logging.GetLogger("health-checker")

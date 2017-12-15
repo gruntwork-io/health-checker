@@ -2,7 +2,7 @@ package options
 
 import "github.com/sirupsen/logrus"
 
-// The common options that apply to all CLI commands
+// The options accepted by this CLI tool
 type Options struct {
 	Ports    []int
 	Listener string
