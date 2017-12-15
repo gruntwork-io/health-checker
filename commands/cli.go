@@ -17,9 +17,9 @@ func CreateCli(version string) *cli.App {
     {{range .Authors}}{{ . }}{{end}}
 
  USAGE:
-    {{.HelpName}} {{if .Flags}}[options]{{end}}
+    {{.HelpName}} {{if .Flags}}[parameters]{{end}}
     {{end}}{{if .Commands}}
- OPTIONS:
+ PARAMETERS:
     {{range .Flags}}{{.}}
     {{end}}{{end}}{{if .Copyright }}
  COPYRIGHT:
@@ -34,27 +34,27 @@ func CreateCli(version string) *cli.App {
 	app.HelpName = app.Name
 	app.Author = "Gruntwork <www.gruntwork.io>"
 	app.Version = version
-	app.Usage = "A simple HTTP server that returns a 200 OK when the given list of TCP ports all accept a connection."
-
+	app.Usage = "A simple HTTP server that returns a 200 OK when all given TCP ports accept inbound connections."
 	app.Commands = nil
-
 	app.Flags = defaultFlags
-
-	app.Action = errors.WithPanicHandling(func(cliContext *cli.Context) error {
-		opts, err := parseOptions(cliContext)
-		if err != nil {
-			return err
-		}
-
-		opts.Logger.Infof("The Health Check will attempt to connect to the following ports via TCP: %v", opts.Ports)
-		opts.Logger.Infof("Listening on Port %s...", opts.Listener)
-		server.StartHttpServer(cliContext)
-
-		// When an HTTP request comes in, open a TCP health check
-		return nil
-	})
-
+	app.Action = runHealthChecker
 
 	return app
 }
 
+func runHealthChecker(cliContext *cli.Context) error {
+	opts, err := parseOptions(cliContext)
+	if isSimpleError(err) {
+		return err
+	}
+	if err != nil  {
+		return errors.WithStackTrace(err)
+	}
+
+	opts.Logger.Infof("The Health Check will attempt to connect to the following ports via TCP: %v", opts.Ports)
+	opts.Logger.Infof("Listening on Port %s...", opts.Listener)
+	server.StartHttpServer(opts)
+
+	// When an HTTP request comes in, open a TCP health check
+	return nil
+}
