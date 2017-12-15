@@ -28,6 +28,10 @@ For stability, we recommend running health-checker under a process supervisor su
 or [systemd](https://www.freedesktop.org/wiki/Software/systemd/) to automatically restart health-checker in the unlikely
 case that it fails.
 
+## Installation
+
+Just download the latest release for your OS on the [Releases Page](https://github.com/gruntwork-io/health-checker/releases).
+
 ## Usage
 
 ```
