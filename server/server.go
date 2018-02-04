@@ -5,6 +5,7 @@ import (
 	"github.com/gruntwork-io/health-checker/options"
 	"net"
 	"fmt"
+	"sync"
 )
 
 func StartHttpServer(opts *options.Options) error {
@@ -26,21 +27,30 @@ func checkTcpPorts(w http.ResponseWriter, r *http.Request, opts *options.Options
 
 	allPortsValid := true
 
+	var waitGroup = sync.WaitGroup{}
+
 	for _, port := range opts.Ports {
-		err := attemptTcpConnection(port, opts)
-		if err != nil {
-			logger.Warnf("TCP connection to port %d FAILED: %s", port, err)
-			allPortsValid = false
-		} else {
-			logger.Infof("TCP connection to port %d successful", port)
-		}
+		waitGroup.Add(1)
+		go func(port int) {
+			err := attemptTcpConnection(port, opts)
+			if err != nil {
+				logger.Warnf("TCP connection to port %d FAILED: %s", port, err)
+				allPortsValid = false
+			} else {
+				logger.Infof("TCP connection to port %d successful", port)
+			}
+
+			waitGroup.Done()
+		}(port)
 	}
 
+	waitGroup.Wait()
+
 	if allPortsValid {
-		logger.Infof("All health checks passed. Returning HTTP 200 response.")
+		logger.Infof("All health checks passed. Returning HTTP 200 response.\n")
 		writeHttp200Response(w)
 	} else {
-		logger.Infof("At least one health check failed. Returning HTTP 504 response.")
+		logger.Infof("At least one health check failed. Returning HTTP 504 response.\n")
 		writeHttp504Response(w)
 	}
 }
