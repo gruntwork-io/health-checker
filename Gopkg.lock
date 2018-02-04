@@ -10,8 +10,8 @@
 [[projects]]
   name = "github.com/gruntwork-io/gruntwork-cli"
   packages = ["entrypoint","errors","logging"]
-  revision = "17b672db77e9ecf979e3161ed497b54734fc75c8"
-  version = "v0.1.1"
+  revision = "94044eeeb0a48b5e8dd52190fa0d0daba53e157f"
+  version = "v0.1.2"
 
 [[projects]]
   name = "github.com/sirupsen/logrus"
@@ -40,6 +40,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "6d557096c548a55fecdfa45421ae26e5c332c54361713b2adf1d0ab0910fce64"
+  inputs-digest = "693562fc110c90f6529b2fc832c2a8548498219ae04ef05dafbc858eec4e1643"
   solver-name = "gps-cdcl"
   solver-version = 1

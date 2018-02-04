@@ -47,6 +47,9 @@ func allCliOptionsEmpty(cliContext *cli.Context) bool {
 func parseOptions(cliContext *cli.Context) (*options.Options, error) {
 	logger := logging.GetLogger("health-checker")
 
+	// By default logrus logs to stderr. But since most output in this tool is informational, we default to stdout.
+	logger.Out = os.Stdout
+
 	logLevel := cliContext.String(logLevelFlag.Name)
 	level, err := logrus.ParseLevel(logLevel)
 	if err != nil {
