@@ -7,11 +7,16 @@ import (
 	"fmt"
 )
 
-func StartHttpServer(opts *options.Options) {
+func StartHttpServer(opts *options.Options) error {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		checkTcpPorts(w, r, opts)
 	})
-	http.ListenAndServe(opts.Listener, nil)
+	err := http.ListenAndServe(opts.Listener, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Check that we can open a TPC connection to all the ports in opts.Ports
@@ -24,7 +29,7 @@ func checkTcpPorts(w http.ResponseWriter, r *http.Request, opts *options.Options
 	for _, port := range opts.Ports {
 		err := attemptTcpConnection(port, opts)
 		if err != nil {
-			logger.Warnf("TCP connection to port %d FAILED!", port)
+			logger.Warnf("TCP connection to port %d FAILED: %s", port, err)
 			allPortsValid = false
 		} else {
 			logger.Infof("TCP connection to port %d successful", port)

@@ -48,7 +48,8 @@ func runHealthChecker(cliContext *cli.Context) error {
 	}
 
 	opts, err := parseOptions(cliContext)
-	if isSimpleError(err) {
+	if isDebugMode() {
+		opts.Logger.Infof("Note: To enable debug mode, set %s to \"true\"", ENV_VAR_NAME_DEBUG_MODE)
 		return err
 	}
 	if err != nil  {
@@ -57,7 +58,10 @@ func runHealthChecker(cliContext *cli.Context) error {
 
 	opts.Logger.Infof("The Health Check will attempt to connect to the following ports via TCP: %v", opts.Ports)
 	opts.Logger.Infof("Listening on Port %s...", opts.Listener)
-	server.StartHttpServer(opts)
+	err = server.StartHttpServer(opts)
+	if err != nil {
+		return errors.WithStackTrace(err)
+	}
 
 	return nil
 }
