@@ -6,10 +6,13 @@ import (
 	"github.com/gruntwork-io/gruntwork-cli/logging"
 	"github.com/urfave/cli"
 	"github.com/sirupsen/logrus"
+	"os"
+	"strings"
 )
 
 const DEFAULT_LISTENER_IP_ADDRESS = "0.0.0.0"
 const DEFAULT_LISTENER_PORT = 5500
+const ENV_VAR_NAME_DEBUG_MODE = "HEALTH_CHECKER_DEBUG"
 
 var portFlag = cli.IntSliceFlag{
 	Name: "port",
@@ -34,7 +37,8 @@ var defaultFlags = []cli.Flag{
 	logLevelFlag,
 }
 
-// Return true if all no options at all were passed to the CLI
+// Return true if no options at all were passed to the CLI. Note that we are specifically testing for flags, some of which
+// are required, not just args.
 func allCliOptionsEmpty(cliContext *cli.Context) bool {
 	return cliContext.NumFlags() == 0
 }
@@ -42,6 +46,9 @@ func allCliOptionsEmpty(cliContext *cli.Context) bool {
 // Parse and validate all CLI options
 func parseOptions(cliContext *cli.Context) (*options.Options, error) {
 	logger := logging.GetLogger("health-checker")
+
+	// By default logrus logs to stderr. But since most output in this tool is informational, we default to stdout.
+	logger.Out = os.Stdout
 
 	logLevel := cliContext.String(logLevelFlag.Name)
 	level, err := logrus.ParseLevel(logLevel)
@@ -56,6 +63,9 @@ func parseOptions(cliContext *cli.Context) (*options.Options, error) {
 	}
 
 	listener := cliContext.String("listener")
+	if listener == "" {
+		return nil, MissingParam(listenerFlag.Name)
+	}
 
 	return &options.Options{
 		Ports:          ports,
@@ -64,13 +74,13 @@ func parseOptions(cliContext *cli.Context) (*options.Options, error) {
 	}, nil
 }
 
-// Some error types are simple enough that we'd rather just show the error message directly instead vomiting out a
-// whole stack trace in log output
-func isSimpleError(err error) bool {
-	_, isInvalidLogLevelErr := err.(InvalidLogLevel)
-	_, isMissingParam := err.(MissingParam)
-
-	return isInvalidLogLevelErr || isMissingParam
+// Some error types are simple enough that we'd rather just show the error message directly instead of vomiting out a
+// whole stack trace in log output. Therefore, allow a debug mode that always shows full stack traces. Otherwise, show
+// simple messages.
+func isDebugMode() bool {
+	envVar, _ := os.LookupEnv(ENV_VAR_NAME_DEBUG_MODE)
+	envVar = strings.ToLower(envVar)
+	return envVar == "true"
 }
 
 // Custom error types
