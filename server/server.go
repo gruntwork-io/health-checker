@@ -6,11 +6,23 @@ import (
 	"net"
 	"fmt"
 	"sync"
+	"time"
+	"github.com/gruntwork-io/docs/errors"
 )
+
+type httpResponse struct {
+	StatusCode int
+	Body string
+}
 
 func StartHttpServer(opts *options.Options) error {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		checkTcpPorts(w, r, opts)
+		resp := checkTcpPorts(opts)
+		err := writeHttpResponse(w, resp)
+		if err != nil {
+			opts.Logger.Error("Failed to send HTTP response. Exiting.")
+			panic(err)
+		}
 	})
 	err := http.ListenAndServe(opts.Listener, nil)
 	if err != nil {
@@ -21,7 +33,7 @@ func StartHttpServer(opts *options.Options) error {
 }
 
 // Check that we can open a TPC connection to all the ports in opts.Ports
-func checkTcpPorts(w http.ResponseWriter, r *http.Request, opts *options.Options) {
+func checkTcpPorts(opts *options.Options) *httpResponse {
 	logger := opts.Logger
 	logger.Infof("Received inbound request. Beginning health checks...")
 
@@ -48,10 +60,10 @@ func checkTcpPorts(w http.ResponseWriter, r *http.Request, opts *options.Options
 
 	if allPortsValid {
 		logger.Infof("All health checks passed. Returning HTTP 200 response.\n")
-		writeHttp200Response(w)
+		return &httpResponse{ StatusCode: http.StatusOK, Body: "OK" }
 	} else {
 		logger.Infof("At least one health check failed. Returning HTTP 504 response.\n")
-		writeHttp504Response(w)
+		return &httpResponse{ StatusCode: http.StatusGatewayTimeout, Body: "At least one health check failed" }
 	}
 }
 
@@ -60,7 +72,9 @@ func attemptTcpConnection(port int, opts *options.Options) error {
 	logger := opts.Logger
 	logger.Infof("Attempting to connect to port %d via TCP...", port)
 
-	_, err := net.Dial("tcp", fmt.Sprintf("0.0.0.0:%d", port))
+	defaultTimeout := time.Second * 5
+
+	_, err := net.DialTimeout("tcp", fmt.Sprintf("0.0.0.0:%d", port), defaultTimeout)
 	if err != nil {
 		return err
 	}
@@ -68,13 +82,13 @@ func attemptTcpConnection(port int, opts *options.Options) error {
 	return nil
 }
 
-func writeHttp200Response(w http.ResponseWriter) {
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("OK"))
-}
+func writeHttpResponse(w http.ResponseWriter, resp *httpResponse) error {
+	w.WriteHeader(resp.StatusCode)
+	_, err := w.Write([]byte(resp.Body))
+	if err != nil {
+		return errors.WithStackTrace(err)
+	}
 
-func writeHttp504Response(w http.ResponseWriter) {
-	w.WriteHeader(http.StatusGatewayTimeout)
-	w.Write([]byte("At least one health check failed"))
+	return nil
 }
 
