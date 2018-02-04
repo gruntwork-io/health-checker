@@ -2,12 +2,12 @@ package server
 
 import (
 	"net/http"
-	"github.com/gruntwork-io/health-checker/options"
 	"net"
 	"fmt"
 	"sync"
 	"time"
-	"github.com/gruntwork-io/docs/errors"
+	"github.com/gruntwork-io/health-checker/options"
+	"github.com/gruntwork-io/gruntwork-cli/errors"
 )
 
 type httpResponse struct {
