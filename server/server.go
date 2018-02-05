@@ -74,10 +74,12 @@ func attemptTcpConnection(port int, opts *options.Options) error {
 
 	defaultTimeout := time.Second * 5
 
-	_, err := net.DialTimeout("tcp", fmt.Sprintf("0.0.0.0:%d", port), defaultTimeout)
+	conn, err := net.DialTimeout("tcp", fmt.Sprintf("0.0.0.0:%d", port), defaultTimeout)
 	if err != nil {
 		return err
 	}
+
+	defer conn.Close()
 
 	return nil
 }
