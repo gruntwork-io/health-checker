@@ -2,6 +2,15 @@
 
 A simple HTTP server that will return `200 OK` if the configured checks are all successful.
 
+## Quick start
+
+Put the following in `health-checks.yml`:
+
+TODO: include simple example of a file with two health checks
+
+and run `health-checker`. Now, requests to `0.0.0.0:5000` will return a 200 OK if the checks
+specified in `health-checks.yml` pass.
+
 ## Motivation
 
 We were setting up an AWS [Auto Scaling Group](http://docs.aws.amazon.com/autoscaling/latest/userguide/AutoScalingGroup.html)
@@ -16,10 +25,10 @@ checking more conditions than a just single port or HTTP request while still all
 
 ## How It Works
 
-When health-checker is started, it will parse a YAML file specified with the `--config` flag (example config
-in [examples/config.yml.simple]()) and listen for inbound HTTP requests for any URL on the IP address and port specified
-by `listener` directive. When it receives a request, it will attempt to run all checks specified in the config
-and return `HTTP 200 OK` if all checks pass. If any of the checks fail, it will return `HTTP 504 GATEWAY TIMEOUT`.
+When health-checker is started, it will parse a YAML file specified with the `--checks` option (example checks
+in [examples/]()) and listen for inbound HTTP requests for any URL on the IP address and port specified
+by `--listener`. When it receives a request, it will evaluate all checks and return `HTTP 200 OK` if all checks pass. 
+If any of the checks fail, it will return `HTTP 504 GATEWAY TIMEOUT`.
 
 Configure your AWS Health Check to only pass the Health Check on `HTTP 200 OK`. Now when an HTTP Health Check request
 comes in, all desired TCP ports will be checked.
@@ -42,23 +51,43 @@ health-checker [options]
 
 | Option | Description | Default 
 | ------ | ----------- | -------
-| `--config` | A YAML config file containing options and checks | |
+| `--listener` |  The IP address and port on which inbound HTTP connections will be accepted. | `0.0.0.0:5000`
+| `--checks` | A YAML file containing checks which will be evaluated | `health-checks.yml`
 | `--log-level` | Set the log level to LEVEL. Must be one of: `panic`, `fatal`, `error,` `warning`, `info`, or `debug` | `info` 
 | `--help` | Show the help screen | | 
 | `--version` | Show the program's version | | 
 
-#### Config File Options
-
-TODO: add more info on the config options
-
-#### Examples
-
-Parse configuration from `health-checker.yml` and run a listener  that accepts all inbound HTTP connections for any URL. When
-the request is received, attempt to run all checks specified in `health-checker.yml`. If all checks succeed, return `HTTP 200 OK`. 
-If any fail, return `HTTP 504 GATEWAY TIMEOUT`.
-
 ```
-health-checker --config health-checker.yml
+health-checker --listener "0.0.0.0:6000" --checks "my-checks.yml" --log-level "warning"
 ```
+#### Checks
 
-See [examples/]() for configuration examples.
+##### port
+
+| Option | Pass Condition
+| ------ | --------------
+| N/A    | Pass if TCP connection is successfully established to `port`
+
+TODO: add example yaml block
+
+##### http
+
+| Option         | Pass Condition
+| -------------- | --------------
+| `status_codes` | Pass if HTTP request returns one of `status_codes`
+
+TODO: add note about HTTPS support here once confirming if it's available
+
+TODO: add example yaml block
+
+##### script
+
+| Option | Pass Condition
+| ------ | --------------
+| N/A    | Pass if script returns with a 0 exit status code.
+
+TODO: add example yaml block
+
+##### Examples
+
+See [examples/]() folder for more complete `health-checks.yml` examples.
