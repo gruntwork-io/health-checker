@@ -43,10 +43,6 @@ func CreateCli(version string) *cli.App {
 }
 
 func runHealthChecker(cliContext *cli.Context) error {
-	if allCliOptionsEmpty(cliContext) {
-		cli.ShowAppHelpAndExit(cliContext, 0)
-	}
-
 	opts, err := parseOptions(cliContext)
 	if isDebugMode() {
 		opts.Logger.Infof("Note: To enable debug mode, set %s to \"true\"", ENV_VAR_NAME_DEBUG_MODE)

@@ -25,10 +25,9 @@ checking more conditions than a just single port or HTTP request while still all
 
 ## How It Works
 
-When health-checker is started, it will parse a YAML file specified with the `--checks` option (example checks
-in [examples/]()) and listen for inbound HTTP requests for any URL on the IP address and port specified
-by `--listener`. When it receives a request, it will evaluate all checks and return `HTTP 200 OK` if all checks pass. 
-If any of the checks fail, it will return `HTTP 504 GATEWAY TIMEOUT`.
+When `health-checker` is started, it will parse a YAML file specified with the `--checks` option (see [examples folder](examples/)) 
+and listen for inbound HTTP requests for any URL on the IP address and port specified by `--listener`. When it receives a request, 
+it will evaluate all checks and return `HTTP 200 OK` if all checks pass. If any of the checks fail, it will return `HTTP 504 GATEWAY TIMEOUT`.
 
 Configure your AWS Health Check to only pass the Health Check on `HTTP 200 OK`. Now when an HTTP Health Check request
 comes in, all desired TCP ports will be checked.
@@ -62,32 +61,18 @@ health-checker --listener "0.0.0.0:6000" --checks "my-checks.yml" --log-level "w
 ```
 #### Checks
 
-##### port
+##### ports
 
-| Option | Pass Condition
-| ------ | --------------
-| N/A    | Pass if TCP connection is successfully established to `port`
+| Option(s) | Pass Condition
+| --------- | --------------
+| N/A       | Pass if TCP connection is successfully established to list of one or more `ports`
 
-TODO: add example yaml block
-
-##### http
-
-| Option         | Pass Condition
-| -------------- | --------------
-| `status_codes` | Pass if HTTP request returns one of `status_codes`
-
-TODO: add note about HTTPS support here once confirming if it's available
-
-TODO: add example yaml block
-
-##### script
-
-| Option | Pass Condition
-| ------ | --------------
-| N/A    | Pass if script returns with a 0 exit status code.
-
-TODO: add example yaml block
+```yaml
+ports:
+  - 8080
+  - 9090
+```
 
 ##### Examples
 
-See [examples/]() folder for more complete `health-checks.yml` examples.
+See [examples folder](examples/) for more complete `health-checks.yml` examples.

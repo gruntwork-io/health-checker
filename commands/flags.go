@@ -2,21 +2,31 @@ package commands
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
+	"strings"
+
+	"gopkg.in/yaml.v2"
+
 	"github.com/gruntwork-io/health-checker/options"
 	"github.com/gruntwork-io/gruntwork-cli/logging"
 	"github.com/urfave/cli"
 	"github.com/sirupsen/logrus"
-	"os"
-	"strings"
 )
 
+const DEFAULT_CHECKS_FILE = "health-checks.yml"
 const DEFAULT_LISTENER_IP_ADDRESS = "0.0.0.0"
 const DEFAULT_LISTENER_PORT = 5500
 const ENV_VAR_NAME_DEBUG_MODE = "HEALTH_CHECKER_DEBUG"
 
-var portFlag = cli.IntSliceFlag{
-	Name: "port",
-	Usage: fmt.Sprintf("[Required] The port number on which a TCP connection will be attempted. Specify one or more times. Example: 8000"),
+type Checks struct {
+	Ports	[]int	  `yaml:"ports"`
+}
+
+var checksFlag = cli.StringFlag{
+	Name: "checks",
+	Usage: fmt.Sprintf("[Required] A YAML file containing health checks."),
+	Value: DEFAULT_CHECKS_FILE,
 }
 
 var listenerFlag = cli.StringFlag{
@@ -32,15 +42,9 @@ var logLevelFlag = cli.StringFlag{
 }
 
 var defaultFlags = []cli.Flag{
-	portFlag,
+	checksFlag,
 	listenerFlag,
 	logLevelFlag,
-}
-
-// Return true if no options at all were passed to the CLI. Note that we are specifically testing for flags, some of which
-// are required, not just args.
-func allCliOptionsEmpty(cliContext *cli.Context) bool {
-	return cliContext.NumFlags() == 0
 }
 
 // Parse and validate all CLI options
@@ -57,18 +61,33 @@ func parseOptions(cliContext *cli.Context) (*options.Options, error) {
 	}
 	logger.SetLevel(level)
 
-	ports := cliContext.IntSlice("port")
-	if len(ports) == 0 {
-		return nil, MissingParam(portFlag.Name)
-	}
-
 	listener := cliContext.String("listener")
 	if listener == "" {
 		return nil, MissingParam(listenerFlag.Name)
 	}
 
+	checksFile := cliContext.String("checks")
+	if checksFile == "" {
+		return nil, MissingParam(checksFlag.Name)
+	}
+	checksFileContents, err := ioutil.ReadFile(checksFile)
+	if err != nil {
+		fmt.Print(err)
+	}
+
+	var checks Checks
+
+	err = yaml.Unmarshal(checksFileContents, &checks)
+	if err != nil{
+		panic(err)
+	}
+
+	if len(checks.Ports) == 0 {
+		panic(err)
+	}
+
 	return &options.Options{
-		Ports:          ports,
+		Ports:          checks.Ports,
 		Listener:       listener,
 		Logger:         logger,
 	}, nil
