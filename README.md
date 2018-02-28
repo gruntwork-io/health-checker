@@ -20,7 +20,7 @@ When health-checker is started, it will listen for inbound HTTP requests for any
 by `--listener`. When it receives a request, it will attempt to open TCP connections to each of the ports specified by
 an instance of `--port`, send a request out to each of the HTTP endpoints specified by `--http`, and run all scripts
 specified by `--script`. If all TCP connections succeed, HTTP requests return a 2XX status code, and all specified scripts return
-with a zero exit code, it will return `HTTP 200 OK`. If any of the specified checks fail, it will return `HTTP 504 Gateway Not Found`.
+with a zero exit code, it will return `HTTP 200 OK`. If any of the specified checks fail, it will return `HTTP 504 GATEWAY TIMEOUT`.
 
 Configure your AWS Health Check to only pass the Health Check on `HTTP 200 OK`. Now when an HTTP Health Check request
 comes in, all desired TCP ports will be checked.
@@ -55,7 +55,7 @@ health-checker [options]
 
 Run a listener on port 6000 that accepts all inbound HTTP connections for any URL. When the request is received,
 attempt to open TCP connections to port 5432 and 3306. If both succeed, return `HTTP 200 OK`. If any fail, return `HTTP
-504 Gateway Not Found`.
+504 GATEWAY TIMEOUT`.
 
 ```
 health-checker --listener "0.0.0.0:6000" --port 5432 --port 3306
@@ -64,7 +64,7 @@ health-checker --listener "0.0.0.0:6000" --port 5432 --port 3306
 Run a listener on port 6000 that accepts all inbound HTTP connections for any URL. When the request is received,
 attempt to open TCP connections to port 5432 and send an HTTP request to `localhost:80`. If a connection is successfully opened
 to port 5432 and the service at `localhost:80` responds with a 2XX status code, return `HTTP 200 OK`. If any fail, return `HTTP
-504 Gateway Not Found`.
+504 GATEWAY TIMEOUT`.
 
 ```
 health-checker --listener "0.0.0.0:6000" --port 5432 --http "localhost:80"
@@ -73,7 +73,7 @@ health-checker --listener "0.0.0.0:6000" --port 5432 --http "localhost:80"
 Run a listener on port 6000 that accepts all inbound HTTP connections for any URL. When the request is received,
 attempt to open TCP connections to port 5432, send an HTTP request to `localhost:80`, and run the script at `/usr/local/bin/check_foo.sh`.
 If a connection is successfully opened to port 5432, the service at `localhost:80` responds with a 2XX status code, and the script
-exits with a zero exit status code, return `HTTP 200 OK`. If any fail, return `HTTP 504 Gateway Not Found`.
+exits with a zero exit status code, return `HTTP 200 OK`. If any fail, return `HTTP 504 GATEWAY TIMEOUT`.
 
 ```
 health-checker --listener "0.0.0.0:6000" --port 5432 --http "localhost:80" --script "/usr/local/bin/check_foo.sh"
