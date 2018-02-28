@@ -1,6 +1,6 @@
 # health-checker
 
-A simple HTTP server that will return `200 OK` if the given checks are all successful.
+A simple HTTP server that will return `200 OK` if the configured checks are all successful.
 
 ## Motivation
 
@@ -16,11 +16,10 @@ checking more conditions than a just single port or HTTP request while still all
 
 ## How It Works
 
-When health-checker is started, it will listen for inbound HTTP requests for any URL on the IP address and port specified
-by `--listener`. When it receives a request, it will attempt to open TCP connections to each of the ports specified by
-an instance of `--port`, send a request out to each of the HTTP endpoints specified by `--http`, and run all scripts
-specified by `--script`. If all TCP connections succeed, HTTP requests return a 2XX status code, and all specified scripts return
-with a zero exit code, it will return `HTTP 200 OK`. If any of the specified checks fail, it will return `HTTP 504 GATEWAY TIMEOUT`.
+When health-checker is started, it will parse a YAML file specified with the `--config` flag (example config
+in [examples/config.yml.simple]()) and listen for inbound HTTP requests for any URL on the IP address and port specified
+by `listener` directive. When it receives a request, it will attempt to run all checks specified in the config
+and return `HTTP 200 OK` if all checks pass. If any of the checks fail, it will return `HTTP 504 GATEWAY TIMEOUT`.
 
 Configure your AWS Health Check to only pass the Health Check on `HTTP 200 OK`. Now when an HTTP Health Check request
 comes in, all desired TCP ports will be checked.
@@ -43,38 +42,23 @@ health-checker [options]
 
 | Option | Description | Default 
 | ------ | ----------- | -------
-| `--port` | The port number on which a TCP connection will be attempted. Can be specified multiple times. | |
-| `--http` | The url:port to check for a 2XX status code. Can be specified multiple times. | |
-| `--script` | Path to an executable script that should return with a 0 exit status if successful. Can be specified multiple times. | |
-| `--listener` |  The IP address and port on which inbound HTTP connections will be accepted. | `0.0.0.0:5000`
+| `--config` | A YAML config file containing options and checks | |
 | `--log-level` | Set the log level to LEVEL. Must be one of: `panic`, `fatal`, `error,` `warning`, `info`, or `debug` | `info` 
 | `--help` | Show the help screen | | 
 | `--version` | Show the program's version | | 
 
+#### Config File Options
+
+TODO: add more info on the config options
+
 #### Examples
 
-Run a listener on port 6000 that accepts all inbound HTTP connections for any URL. When the request is received,
-attempt to open TCP connections to port 5432 and 3306. If both succeed, return `HTTP 200 OK`. If any fail, return `HTTP
-504 GATEWAY TIMEOUT`.
+Parse configuration from `health-checker.yml` and run a listener  that accepts all inbound HTTP connections for any URL. When
+the request is received, attempt to run all checks specified in `health-checker.yml`. If all checks succeed, return `HTTP 200 OK`. 
+If any fail, return `HTTP 504 GATEWAY TIMEOUT`.
 
 ```
-health-checker --listener "0.0.0.0:6000" --port 5432 --port 3306
+health-checker --config health-checker.yml
 ```
 
-Run a listener on port 6000 that accepts all inbound HTTP connections for any URL. When the request is received,
-attempt to open TCP connections to port 5432 and send an HTTP request to `localhost:80`. If a connection is successfully opened
-to port 5432 and the service at `localhost:80` responds with a 2XX status code, return `HTTP 200 OK`. If any fail, return `HTTP
-504 GATEWAY TIMEOUT`.
-
-```
-health-checker --listener "0.0.0.0:6000" --port 5432 --http "localhost:80"
-```
-
-Run a listener on port 6000 that accepts all inbound HTTP connections for any URL. When the request is received,
-attempt to open TCP connections to port 5432, send an HTTP request to `localhost:80`, and run the script at `/usr/local/bin/check_foo.sh`.
-If a connection is successfully opened to port 5432, the service at `localhost:80` responds with a 2XX status code, and the script
-exits with a zero exit status code, return `HTTP 200 OK`. If any fail, return `HTTP 504 GATEWAY TIMEOUT`.
-
-```
-health-checker --listener "0.0.0.0:6000" --port 5432 --http "localhost:80" --script "/usr/local/bin/check_foo.sh"
-```
+See [examples/]() for configuration examples.
