@@ -55,7 +55,7 @@ func checkHealthChecks(opts *options.Options) *httpResponse {
 			} else {
 				logger.Infof("TCP connection to %s at %s:%d successful", name, host, port)
 			}
-			waitGroup.Done()
+			defer waitGroup.Done()
 		}(port)
 	}
 

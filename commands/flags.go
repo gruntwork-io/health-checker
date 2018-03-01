@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"errors"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -94,7 +95,7 @@ func parseChecksFile(checksFile string) (*options.Checks, error) {
 	}
 
 	if len(checks.TcpChecks) + len(checks.HttpChecks) + len(checks.ScriptChecks) == 0 {
-		return nil, err
+		return nil, errors.New("no checks found: must specify at least one check")
 	}
 
 	return &checks, nil
