@@ -1,23 +1,23 @@
 package server
 
 import (
-	"net/http"
-	"net"
+	gerrors "errors"
 	"fmt"
+	"io/ioutil"
+	"net"
+	"net/http"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
-	gerrors "errors"
 
-	"github.com/gruntwork-io/health-checker/options"
 	"github.com/gruntwork-io/gruntwork-cli/errors"
-	"io/ioutil"
-	"strings"
+	"github.com/gruntwork-io/health-checker/options"
 )
 
 type httpResponse struct {
 	StatusCode int
-	Body string
+	Body       string
 }
 
 func StartHttpServer(opts *options.Options) error {
@@ -41,7 +41,7 @@ func checkHealthChecks(opts *options.Options) *httpResponse {
 	logger := opts.Logger
 	logger.Infof("Received inbound request. Beginning health checks...")
 
-	// initialize failedChecks to 0
+	// initialize failedChecks to 0, used as atomic counter for goroutines below
 	var failedChecks uint64
 	var waitGroup = sync.WaitGroup{}
 
@@ -78,7 +78,7 @@ func checkHealthChecks(opts *options.Options) *httpResponse {
 				} else {
 					logger.Infof("HTTP Status check to %s at %s:%d successful", name, host, port)
 				}
-			} else if len(expected) > 0  {
+			} else if len(expected) > 0 {
 				err := checkHttpResponseBody(name, host, port, expected, opts)
 				if err != nil {
 					logger.Warnf("HTTP Body check to %s at %s:%d FAILED: %s", name, host, port, err)
@@ -101,10 +101,10 @@ func checkHealthChecks(opts *options.Options) *httpResponse {
 	failedChecksFinal := atomic.LoadUint64(&failedChecks)
 	if failedChecksFinal > 0 {
 		logger.Infof("At least one health check failed. Returning HTTP 504 response.\n")
-		return &httpResponse{ StatusCode: http.StatusGatewayTimeout, Body: "At least one health check failed" }
+		return &httpResponse{StatusCode: http.StatusGatewayTimeout, Body: "At least one health check failed"}
 	} else {
 		logger.Infof("All health checks passed. Returning HTTP 200 response.\n")
-		return &httpResponse{ StatusCode: http.StatusOK, Body: "OK" }
+		return &httpResponse{StatusCode: http.StatusOK, Body: "OK"}
 	}
 }
 
@@ -137,7 +137,7 @@ func checkHttpResponse(name string, host string, port int, successCodes []int, o
 		return err
 	}
 
-	if contains(successCodes, resp.StatusCode){
+	if contains(successCodes, resp.StatusCode) {
 		// Success! resp has one of the success_codes
 		return nil
 	} else {
@@ -171,7 +171,7 @@ func checkHttpResponseBody(name string, host string, port int, expected string, 
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 
-	if strings.Contains(string(body), expected){
+	if strings.Contains(string(body), expected) {
 		// Success! resp body has expected string
 		return nil
 	} else {
@@ -183,9 +183,9 @@ func checkHttpResponseBody(name string, host string, port int, expected string, 
 //	logger := opts.Logger
 //	logger.Infof("Checking script %s for exit status %d...", script, expectedExitStatus)
 
-	//defaultTimeout := time.Second * 5
+//defaultTimeout := time.Second * 5
 
-	// TODO: add code here
+// TODO: add code here
 //}
 
 func writeHttpResponse(w http.ResponseWriter, resp *httpResponse) error {
@@ -197,4 +197,3 @@ func writeHttpResponse(w http.ResponseWriter, resp *httpResponse) error {
 
 	return nil
 }
-
