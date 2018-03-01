@@ -6,9 +6,19 @@ A simple HTTP server that will return `200 OK` if the configured checks are all 
 
 Put the following in `health-checks.yml`:
 
-TODO: include simple example of a file with two health checks
+```yaml
+tcp:
+  - name: tcpService1
+    host: localhost
+    port: 5500
+http:
+  - name: httpService1
+    host: 127.0.0.1
+    port: 8080
+    success_codes: [200, 204, 301, 302]
+```
 
-and run `health-checker`. Now, requests to `0.0.0.0:5000` will return a 200 OK if the checks
+and run `health-checker`. Now, requests to `0.0.0.0:5000` will return a 200 OK if all the checks
 specified in `health-checks.yml` pass.
 
 ## Motivation
@@ -58,19 +68,6 @@ health-checker [options]
 
 ```
 health-checker --listener "0.0.0.0:6000" --checks "my-checks.yml" --log-level "warning"
-```
-#### Checks
-
-##### ports
-
-| Option(s) | Pass Condition
-| --------- | --------------
-| N/A       | Pass if TCP connection is successfully established to list of one or more `ports`
-
-```yaml
-ports:
-  - 8080
-  - 9090
 ```
 
 ##### Examples

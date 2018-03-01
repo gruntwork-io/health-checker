@@ -1,18 +1,18 @@
 package commands
 
 import (
-	"fmt"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
 
 	"gopkg.in/yaml.v2"
 
-	"github.com/gruntwork-io/health-checker/options"
 	"github.com/gruntwork-io/gruntwork-cli/logging"
-	"github.com/urfave/cli"
+	"github.com/gruntwork-io/health-checker/options"
 	"github.com/sirupsen/logrus"
+	"github.com/urfave/cli"
 )
 
 const DEFAULT_CHECKS_FILE = "health-checks.yml"
@@ -23,7 +23,7 @@ const ENV_VAR_NAME_DEBUG_MODE = "HEALTH_CHECKER_DEBUG"
 
 var checksFlag = cli.StringFlag{
 	Name: "checks",
-	Usage: fmt.Sprintf("[Required] A YAML file containing health checks."),
+	Usage: fmt.Sprintf("[Required] A YAML file containing health checks. Default: %s", DEFAULT_CHECKS_FILE),
 	Value: DEFAULT_CHECKS_FILE,
 }
 
