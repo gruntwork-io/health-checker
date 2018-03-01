@@ -19,9 +19,6 @@ const DEFAULT_LISTENER_IP_ADDRESS = "0.0.0.0"
 const DEFAULT_LISTENER_PORT = 5500
 const ENV_VAR_NAME_DEBUG_MODE = "HEALTH_CHECKER_DEBUG"
 
-type Checks struct {
-	Ports	[]int	  `yaml:"ports"`
-}
 
 var checksFlag = cli.StringFlag{
 	Name: "checks",
@@ -70,27 +67,37 @@ func parseOptions(cliContext *cli.Context) (*options.Options, error) {
 	if checksFile == "" {
 		return nil, MissingParam(checksFlag.Name)
 	}
-	checksFileContents, err := ioutil.ReadFile(checksFile)
+
+	checks, err := parseChecksFile(checksFile)
 	if err != nil {
-		fmt.Print(err)
-	}
-
-	var checks Checks
-
-	err = yaml.Unmarshal(checksFileContents, &checks)
-	if err != nil{
-		panic(err)
-	}
-
-	if len(checks.Ports) == 0 {
-		panic(err)
+		return nil, err
 	}
 
 	return &options.Options{
-		Ports:          checks.Ports,
+		Checks:         checks,
 		Listener:       listener,
 		Logger:         logger,
 	}, nil
+}
+
+func parseChecksFile(checksFile string) (*options.Checks, error) {
+	checksFileContents, err := ioutil.ReadFile(checksFile)
+	if err != nil {
+		return nil, err
+	}
+
+	var checks options.Checks
+
+	err = yaml.Unmarshal(checksFileContents, &checks)
+	if err != nil{
+		return nil, err
+	}
+
+	if len(checks.TcpChecks) + len(checks.HttpChecks) + len(checks.ScriptChecks) == 0 {
+		return nil, err
+	}
+
+	return &checks, nil
 }
 
 // Some error types are simple enough that we'd rather just show the error message directly instead of vomiting out a

@@ -52,7 +52,6 @@ func runHealthChecker(cliContext *cli.Context) error {
 		return errors.WithStackTrace(err)
 	}
 
-	opts.Logger.Infof("The Health Check will attempt to connect to the following ports via TCP: %v", opts.Ports)
 	opts.Logger.Infof("Listening on Port %s...", opts.Listener)
 	err = server.StartHttpServer(opts)
 	if err != nil {

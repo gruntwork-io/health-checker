@@ -5,7 +5,9 @@ import (
 	"net"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
+
 	"github.com/gruntwork-io/health-checker/options"
 	"github.com/gruntwork-io/gruntwork-cli/errors"
 )
@@ -17,7 +19,7 @@ type httpResponse struct {
 
 func StartHttpServer(opts *options.Options) error {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		resp := checkTcpPorts(opts)
+		resp := checkHealthChecks(opts)
 		err := writeHttpResponse(w, resp)
 		if err != nil {
 			opts.Logger.Error("Failed to send HTTP response. Exiting.")
@@ -32,49 +34,51 @@ func StartHttpServer(opts *options.Options) error {
 	return nil
 }
 
-// Check that we can open a TPC connection to all the ports in opts.Ports
-func checkTcpPorts(opts *options.Options) *httpResponse {
+func checkHealthChecks(opts *options.Options) *httpResponse {
 	logger := opts.Logger
 	logger.Infof("Received inbound request. Beginning health checks...")
 
-	allPortsValid := true
-
+	// initialize failedChecks to 0
+	var failedChecks uint64
 	var waitGroup = sync.WaitGroup{}
 
-	for _, port := range opts.Ports {
+	for _, tcpCheck := range opts.Checks.TcpChecks {
+		name := tcpCheck.Name
+		host := tcpCheck.Host
+		port := tcpCheck.Port
 		waitGroup.Add(1)
 		go func(port int) {
-			err := attemptTcpConnection(port, opts)
+			err := attemptTcpConnection(tcpCheck.Host, tcpCheck.Port,opts)
 			if err != nil {
-				logger.Warnf("TCP connection to port %d FAILED: %s", port, err)
-				allPortsValid = false
+				logger.Warnf("TCP connection to %s at %s:%d FAILED: %s", name, host, port, err)
+				atomic.AddUint64(&failedChecks, 1)
 			} else {
-				logger.Infof("TCP connection to port %d successful", port)
+				logger.Infof("TCP connection to %s at %s:%d successful", name, host, port)
 			}
-
 			waitGroup.Done()
 		}(port)
 	}
 
 	waitGroup.Wait()
 
-	if allPortsValid {
-		logger.Infof("All health checks passed. Returning HTTP 200 response.\n")
-		return &httpResponse{ StatusCode: http.StatusOK, Body: "OK" }
-	} else {
+	failedChecksFinal := atomic.LoadUint64(&failedChecks)
+	if failedChecksFinal > 0 {
 		logger.Infof("At least one health check failed. Returning HTTP 504 response.\n")
 		return &httpResponse{ StatusCode: http.StatusGatewayTimeout, Body: "At least one health check failed" }
+	} else {
+		logger.Infof("All health checks passed. Returning HTTP 200 response.\n")
+		return &httpResponse{ StatusCode: http.StatusOK, Body: "OK" }
 	}
 }
 
 // Attempt to open a TCP connection to the given port
-func attemptTcpConnection(port int, opts *options.Options) error {
+func attemptTcpConnection(host string, port int, opts *options.Options) error {
 	logger := opts.Logger
 	logger.Infof("Attempting to connect to port %d via TCP...", port)
 
 	defaultTimeout := time.Second * 5
 
-	conn, err := net.DialTimeout("tcp", fmt.Sprintf("0.0.0.0:%d", port), defaultTimeout)
+	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", host, port), defaultTimeout)
 	if err != nil {
 		return err
 	}
