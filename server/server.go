@@ -2,8 +2,11 @@ package server
 
 import (
 	"fmt"
+	gerrors "errors"
+	"io/ioutil"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -105,7 +108,51 @@ func (c TcpCheck) DoCheck (opts *options.Options) error {
 }
 
 func (c HttpCheck) DoCheck (opts *options.Options) error {
-	return nil
+	logger := opts.Logger
+	logger.Infof("Checking %s at %s:%d via HTTP...", c.Name, c.Host, c.Port)
+
+	defaultTimeout := time.Second * 5
+	client := http.Client{
+		Timeout: defaultTimeout,
+	}
+	resp, err := client.Get(fmt.Sprintf("http://%s:%d", c.Host, c.Port))
+	if err != nil {
+		return err
+	}
+
+	if len(c.SuccessStatusCodes) > 0 {
+		// when success_codes is defined we only need to check this
+		if contains(c.SuccessStatusCodes, resp.StatusCode) {
+			// Success! response has one of the success_codes
+			return nil
+		} else {
+			return gerrors.New(fmt.Sprintf("http status code %s was not one of %v", resp.StatusCode, c.SuccessStatusCodes))
+		}
+	} else {
+		// since no success_codes defined we compare body with body_regex
+		defer resp.Body.Close()
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return err
+		}
+
+		if strings.Contains(string(body), c.BodyRegex) {
+			// Success! resp body has expected string
+			return nil
+		} else {
+			return gerrors.New(fmt.Sprintf("expected %s in http body: %s", c.BodyRegex, body))
+		}
+	}
+}
+
+// TODO: move into helpers
+func contains(s []int, e int) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
 }
 
 func (c ScriptCheck) DoCheck (opts *options.Options) error {
