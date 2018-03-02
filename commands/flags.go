@@ -103,8 +103,7 @@ func parseChecksFile(checksFile string) ([]options.Check, error) {
 		return nil, err
 	}
 
-	allChecksLen := len(checks.TcpChecks) + len(checks.HttpChecks) + len(checks.ScriptChecks)
-	if allChecksLen == 0 {
+	if len(checks.TcpChecks) + len(checks.HttpChecks) + len(checks.ScriptChecks) == 0 {
 		return nil, errors.New("no checks found: must specify at least one check")
 	} else {
 		for n := range checks.TcpChecks {
