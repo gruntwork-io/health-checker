@@ -13,6 +13,7 @@ import (
 	"github.com/gruntwork-io/health-checker/options"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
+	"github.com/gruntwork-io/health-checker/server"
 )
 
 const DEFAULT_CHECKS_FILE = "health-checks.yml"
@@ -43,6 +44,13 @@ var defaultFlags = []cli.Flag{
 	checksFlag,
 	listenerFlag,
 	logLevelFlag,
+}
+
+// define structure of yaml file
+type Checks struct {
+	TcpChecks    []server.TcpCheck    `yaml:"tcp"`
+	HttpChecks   []server.HttpCheck   `yaml:"http"`
+	ScriptChecks []server.ScriptCheck `yaml:"scripts"`
 }
 
 // Parse and validate all CLI options
@@ -81,24 +89,35 @@ func parseOptions(cliContext *cli.Context) (*options.Options, error) {
 	}, nil
 }
 
-func parseChecksFile(checksFile string) (*options.Checks, error) {
+func parseChecksFile(checksFile string) ([]options.Check, error) {
 	checksFileContents, err := ioutil.ReadFile(checksFile)
 	if err != nil {
 		return nil, err
 	}
 
-	var checks options.Checks
+	var checks Checks
+	var checkSlice []options.Check
 
 	err = yaml.Unmarshal(checksFileContents, &checks)
 	if err != nil{
 		return nil, err
 	}
 
-	if len(checks.TcpChecks) + len(checks.HttpChecks) + len(checks.ScriptChecks) == 0 {
+	allChecksLen := len(checks.TcpChecks) + len(checks.HttpChecks) + len(checks.ScriptChecks)
+	if allChecksLen == 0 {
 		return nil, errors.New("no checks found: must specify at least one check")
+	} else {
+		for n := range checks.TcpChecks {
+			checkSlice = append(checkSlice, checks.TcpChecks[n])
+		}
+		for n := range checks.HttpChecks {
+			checkSlice = append(checkSlice, checks.HttpChecks[n])
+		}
+		for n := range checks.ScriptChecks {
+			checkSlice = append(checkSlice, checks.ScriptChecks[n])
+		}
 	}
-
-	return &checks, nil
+	return checkSlice, nil
 }
 
 // Some error types are simple enough that we'd rather just show the error message directly instead of vomiting out a

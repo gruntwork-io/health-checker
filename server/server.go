@@ -1,12 +1,9 @@
 package server
 
 import (
-	gerrors "errors"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -14,6 +11,25 @@ import (
 	"github.com/gruntwork-io/gruntwork-cli/errors"
 	"github.com/gruntwork-io/health-checker/options"
 )
+
+type TcpCheck struct {
+	Name string `yaml:"name"`
+	Host string `yaml:"host"`
+	Port int `yaml:"port"`
+}
+
+type HttpCheck struct {
+	Name string `yaml:"name"`
+	Host string `yaml:"host"`
+	Port int `yaml:"port"`
+	SuccessStatusCodes []int `yaml:"success_status_codes"`
+	BodyRegex string `yaml:"body_regex"`
+}
+
+type ScriptCheck struct {
+	Script string `yaml:"script"`
+	SuccessExitCodes []int `yaml:"success_exit_codes"`
+}
 
 type httpResponse struct {
 	StatusCode int
@@ -40,61 +56,25 @@ func StartHttpServer(opts *options.Options) error {
 func checkHealthChecks(opts *options.Options) *httpResponse {
 	logger := opts.Logger
 	logger.Infof("Received inbound request. Beginning health checks...")
+	fmt.Printf("%v", opts.Checks)
 
 	// initialize failedChecks to 0, used as atomic counter for goroutines below
 	var failedChecks uint64
 	var waitGroup = sync.WaitGroup{}
 
-	for _, tcpCheck := range opts.Checks.TcpChecks {
-		name := tcpCheck.Name
-		host := tcpCheck.Host
-		port := tcpCheck.Port
+	for _, check := range opts.Checks {
 		waitGroup.Add(1)
-		go func(name string, host string, port int) {
-			err := checkTcpConnection(name, host, port, opts)
+		go func(check options.Check) {
+			defer waitGroup.Done()
+			err := check.DoCheck(opts)
 			if err != nil {
-				logger.Warnf("TCP connection to %s at %s:%d FAILED: %s", name, host, port, err)
+				logger.Warnf("Check for %s FAILED: %s", check, err)
 				atomic.AddUint64(&failedChecks, 1)
 			} else {
-				logger.Infof("TCP connection to %s at %s:%d successful", name, host, port)
+				logger.Infof("Check for %s successful", check)
 			}
-			defer waitGroup.Done()
-		}(name, host, port)
+		}(check)
 	}
-
-	for _, httpCheck := range opts.Checks.HttpChecks {
-		name := httpCheck.Name
-		host := httpCheck.Host
-		port := httpCheck.Port
-		successCodes := httpCheck.SuccessStatusCodes
-		expected := httpCheck.BodyRegex
-		waitGroup.Add(1)
-		go func(name string, host string, port int, successCodes []int, expected string) {
-			if len(successCodes) > 0 {
-				err := checkHttpResponse(name, host, port, successCodes, opts)
-				if err != nil {
-					logger.Warnf("HTTP Status check to %s at %s:%d FAILED: %s", name, host, port, err)
-					atomic.AddUint64(&failedChecks, 1)
-				} else {
-					logger.Infof("HTTP Status check to %s at %s:%d successful", name, host, port)
-				}
-			} else if len(expected) > 0 {
-				err := checkHttpResponseBody(name, host, port, expected, opts)
-				if err != nil {
-					logger.Warnf("HTTP Body check to %s at %s:%d FAILED: %s", name, host, port, err)
-					atomic.AddUint64(&failedChecks, 1)
-				} else {
-					logger.Infof("HTTP Body check to %s at %s:%d successful", name, host, port)
-				}
-			} else {
-				logger.Warnf("FAILED: At least one of success_codes or body_regex not specified for %s", name)
-				atomic.AddUint64(&failedChecks, 1)
-			}
-			defer waitGroup.Done()
-		}(name, host, port, successCodes, expected)
-	}
-
-	// TODO: implement scriptCheck logic
 
 	waitGroup.Wait()
 
@@ -108,13 +88,13 @@ func checkHealthChecks(opts *options.Options) *httpResponse {
 	}
 }
 
-func checkTcpConnection(name string, host string, port int, opts *options.Options) error {
+func (c TcpCheck) DoCheck (opts *options.Options) error {
 	logger := opts.Logger
-	logger.Infof("Attempting to connect to %s at %s:%d via TCP...", name, host, port)
+	logger.Infof("Attempting to connect to %s at %s:%d via TCP...", c.Name, c.Host, c.Port)
 
 	defaultTimeout := time.Second * 5
 
-	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", host, port), defaultTimeout)
+	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", c.Host, c.Port), defaultTimeout)
 	if err != nil {
 		return err
 	}
@@ -124,69 +104,13 @@ func checkTcpConnection(name string, host string, port int, opts *options.Option
 	return nil
 }
 
-func checkHttpResponse(name string, host string, port int, successCodes []int, opts *options.Options) error {
-	logger := opts.Logger
-	logger.Infof("Checking %s at %s:%d via HTTP...", name, host, port)
-
-	defaultTimeout := time.Second * 5
-	client := http.Client{
-		Timeout: defaultTimeout,
-	}
-	resp, err := client.Get(fmt.Sprintf("http://%s:%d", host, port))
-	if err != nil {
-		return err
-	}
-
-	if contains(successCodes, resp.StatusCode) {
-		// Success! resp has one of the success_codes
-		return nil
-	} else {
-		return gerrors.New(fmt.Sprintf("http status code %s was not one of %v", resp.StatusCode, successCodes))
-	}
+func (c HttpCheck) DoCheck (opts *options.Options) error {
+	return nil
 }
 
-// TODO: move into helpers
-func contains(s []int, e int) bool {
-	for _, a := range s {
-		if a == e {
-			return true
-		}
-	}
-	return false
+func (c ScriptCheck) DoCheck (opts *options.Options) error {
+	return nil
 }
-
-func checkHttpResponseBody(name string, host string, port int, expected string, opts *options.Options) error {
-	logger := opts.Logger
-	logger.Infof("Checking HTTP response body for %s at %s:%d...", name, host, port)
-
-	defaultTimeout := time.Second * 5
-	client := http.Client{
-		Timeout: defaultTimeout,
-	}
-	resp, err := client.Get(fmt.Sprintf("http://%s:%d", host, port))
-	if err != nil {
-		return err
-	}
-
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-
-	if strings.Contains(string(body), expected) {
-		// Success! resp body has expected string
-		return nil
-	} else {
-		return gerrors.New(fmt.Sprintf("expected %s in http body: %s", expected, body))
-	}
-}
-
-//func checkScript(script string, expectedExitStatus int, opts *options.Options) error {
-//	logger := opts.Logger
-//	logger.Infof("Checking script %s for exit status %d...", script, expectedExitStatus)
-
-//defaultTimeout := time.Second * 5
-
-// TODO: add code here
-//}
 
 func writeHttpResponse(w http.ResponseWriter, resp *httpResponse) error {
 	w.WriteHeader(resp.StatusCode)
