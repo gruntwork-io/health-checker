@@ -50,7 +50,7 @@ var defaultFlags = []cli.Flag{
 type Checks struct {
 	TcpChecks    []server.TcpCheck    `yaml:"tcp"`
 	HttpChecks   []server.HttpCheck   `yaml:"http"`
-	ScriptChecks []server.ScriptCheck `yaml:"scripts"`
+	ScriptChecks []server.ScriptCheck `yaml:"script"`
 }
 
 // Parse and validate all CLI options
@@ -77,7 +77,7 @@ func parseOptions(cliContext *cli.Context) (*options.Options, error) {
 		return nil, MissingParam(checksFlag.Name)
 	}
 
-	checks, err := parseChecksFile(checksFile)
+	checks, err := parseChecks(checksFile, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +89,7 @@ func parseOptions(cliContext *cli.Context) (*options.Options, error) {
 	}, nil
 }
 
-func parseChecksFile(checksFile string) ([]options.Check, error) {
+func parseChecks(checksFile string, logger *logrus.Logger) ([]options.Check, error) {
 	checksFileContents, err := ioutil.ReadFile(checksFile)
 	if err != nil {
 		return nil, err
@@ -116,6 +116,11 @@ func parseChecksFile(checksFile string) ([]options.Check, error) {
 			checkSlice = append(checkSlice, checks.ScriptChecks[n])
 		}
 	}
+
+	for _, check := range checkSlice {
+		check.ValidateCheck(logger)
+	}
+
 	return checkSlice, nil
 }
 

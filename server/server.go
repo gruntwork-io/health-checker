@@ -15,6 +15,7 @@ import (
 
 	"github.com/gruntwork-io/gruntwork-cli/errors"
 	"github.com/gruntwork-io/health-checker/options"
+	"github.com/sirupsen/logrus"
 )
 
 type TcpCheck struct {
@@ -92,6 +93,18 @@ func checkHealthChecks(opts *options.Options) *httpResponse {
 	}
 }
 
+func (c TcpCheck) ValidateCheck (logger *logrus.Logger) {
+	if c.Name == "" {
+		missingRequiredKey("tcp","name", logger)
+	}
+	if c.Host == "" {
+		missingRequiredKey("tcp","host", logger)
+	}
+	if c.Port == 0 {
+		missingRequiredKey("tcp","port", logger)
+	}
+}
+
 func (c TcpCheck) DoCheck (opts *options.Options) error {
 	logger := opts.Logger
 	logger.Infof("Attempting to connect to %s at %s:%d via TCP...", c.Name, c.Host, c.Port)
@@ -106,6 +119,21 @@ func (c TcpCheck) DoCheck (opts *options.Options) error {
 	defer conn.Close()
 
 	return nil
+}
+
+func (c HttpCheck) ValidateCheck (logger *logrus.Logger) {
+	if c.Name == "" {
+		missingRequiredKey("http","name", logger)
+	}
+	if c.Host == "" {
+		missingRequiredKey("http","host", logger)
+	}
+	if c.Port == 0 {
+		missingRequiredKey("http","port", logger)
+	}
+	if len(c.SuccessStatusCodes) == 0 || c.BodyRegex == "" {
+		missingRequiredKey("http", "success_codes or body_regex", logger)
+	}
 }
 
 func (c HttpCheck) DoCheck (opts *options.Options) error {
@@ -154,6 +182,19 @@ func contains(s []int, e int) bool {
 		}
 	}
 	return false
+}
+
+func missingRequiredKey(check string, key string, logger *logrus.Logger) {
+	logger.Fatalf("Failed to parse YAML: %s check missing required key: %s", check, key)
+}
+
+func (c ScriptCheck) ValidateCheck (logger *logrus.Logger) {
+	if c.Name == "" {
+		missingRequiredKey("script","name", logger)
+	}
+	if c.Script == "" {
+		missingRequiredKey("script","script", logger)
+	}
 }
 
 func (c ScriptCheck) DoCheck (opts *options.Options) error {
