@@ -1,0 +1,19 @@
+tcp:
+  - name: service1
+    host: localhost
+    port: 5500
+  - name: service2
+    host: 0.0.0.0
+    port: 6500
+http:
+  - name: httpService1
+    host: 127.0.0.1
+    port: 8080
+    success_codes: [200, 204, 301, 302]
+  - name: httpService2
+    host: 127.0.0.1
+    port: 8081
+    body_regex: "healthy"
+script:
+  - name: scriptCheck1
+    script: /path/to/some/script.sh
