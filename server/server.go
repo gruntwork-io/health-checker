@@ -1,11 +1,13 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	gerrors "errors"
 	"io/ioutil"
 	"net"
 	"net/http"
+	"os/exec"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -30,8 +32,8 @@ type HttpCheck struct {
 }
 
 type ScriptCheck struct {
+	Name string `yaml:"name"`
 	Script string `yaml:"script"`
-	SuccessExitCodes []int `yaml:"success_exit_codes"`
 }
 
 type httpResponse struct {
@@ -59,7 +61,6 @@ func StartHttpServer(opts *options.Options) error {
 func checkHealthChecks(opts *options.Options) *httpResponse {
 	logger := opts.Logger
 	logger.Infof("Received inbound request. Beginning health checks...")
-	fmt.Printf("%v", opts.Checks)
 
 	// initialize failedChecks to 0, used as atomic counter for goroutines below
 	var failedChecks uint64
@@ -156,6 +157,19 @@ func contains(s []int, e int) bool {
 }
 
 func (c ScriptCheck) DoCheck (opts *options.Options) error {
+	defaultTimeout := 5*time.Second
+	ctx, cancel := context.WithTimeout(context.Background(), defaultTimeout)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, c.Script)
+	_, err := cmd.Output()
+	if ctx.Err() == context.DeadlineExceeded {
+		// script timed out
+		return gerrors.New(fmt.Sprintf("check %s at %s FAILED to complete within %ds", c.Name, c.Script, defaultTimeout))
+	}
+	if err != nil {
+		return gerrors.New(fmt.Sprintf("check %s at %s FAILED with a non-zero exit code", c.Name, c.Script))
+	}
 	return nil
 }
 
