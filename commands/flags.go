@@ -22,8 +22,8 @@ const DEFAULT_LISTENER_PORT = 5500
 const ENV_VAR_NAME_DEBUG_MODE = "HEALTH_CHECKER_DEBUG"
 
 
-var checksFlag = cli.StringFlag{
-	Name: "checks",
+var configFlag = cli.StringFlag{
+	Name: "config",
 	Usage: fmt.Sprintf("[Required] A YAML file containing health checks. Default: %s", DEFAULT_CHECKS_FILE),
 	Value: DEFAULT_CHECKS_FILE,
 }
@@ -41,7 +41,7 @@ var logLevelFlag = cli.StringFlag{
 }
 
 var defaultFlags = []cli.Flag{
-	checksFlag,
+	configFlag,
 	listenerFlag,
 	logLevelFlag,
 }
@@ -72,12 +72,12 @@ func parseOptions(cliContext *cli.Context) (*options.Options, error) {
 		return nil, MissingParam(listenerFlag.Name)
 	}
 
-	checksFile := cliContext.String("checks")
-	if checksFile == "" {
-		return nil, MissingParam(checksFlag.Name)
+	configFile := cliContext.String("config")
+	if configFile == "" {
+		return nil, MissingParam(configFlag.Name)
 	}
 
-	checks, err := parseChecks(checksFile, logger)
+	checks, err := parseChecksFromConfigFile(configFile, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -89,8 +89,8 @@ func parseOptions(cliContext *cli.Context) (*options.Options, error) {
 	}, nil
 }
 
-func parseChecks(checksFile string, logger *logrus.Logger) ([]options.Check, error) {
-	checksFileContents, err := ioutil.ReadFile(checksFile)
+func parseChecksFromConfigFile(configFile string, logger *logrus.Logger) ([]options.Check, error) {
+	configFileAsByteSlice, err := ioutil.ReadFile(configFile)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +98,7 @@ func parseChecks(checksFile string, logger *logrus.Logger) ([]options.Check, err
 	var checks Checks
 	var checkSlice []options.Check
 
-	err = yaml.Unmarshal(checksFileContents, &checks)
+	err = yaml.Unmarshal(configFileAsByteSlice, &checks)
 	if err != nil{
 		return nil, err
 	}

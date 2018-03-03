@@ -131,9 +131,6 @@ func (c HttpCheck) ValidateCheck (logger *logrus.Logger) {
 	if c.Port == 0 {
 		missingRequiredKey("http","port", logger)
 	}
-	if len(c.SuccessStatusCodes) == 0 || c.BodyRegex == "" {
-		missingRequiredKey("http", "success_codes or body_regex", logger)
-	}
 }
 
 func (c HttpCheck) DoCheck (opts *options.Options) error {
@@ -155,9 +152,9 @@ func (c HttpCheck) DoCheck (opts *options.Options) error {
 			// Success! response has one of the success_codes
 			return nil
 		} else {
-			return gerrors.New(fmt.Sprintf("http status code %s was not one of %v", resp.StatusCode, c.SuccessStatusCodes))
+			return gerrors.New(fmt.Sprintf("http check %s wanted one of %v got %d", c.Name, c.SuccessStatusCodes, resp.Status))
 		}
-	} else {
+	} else if c.BodyRegex != ""{
 		// since no success_codes defined we compare body with body_regex
 		defer resp.Body.Close()
 		body, err := ioutil.ReadAll(resp.Body)
@@ -169,7 +166,14 @@ func (c HttpCheck) DoCheck (opts *options.Options) error {
 			// Success! resp body has expected string
 			return nil
 		} else {
-			return gerrors.New(fmt.Sprintf("expected %s in http body: %s", c.BodyRegex, body))
+			return gerrors.New(fmt.Sprintf("http check %s wanted %s in http body got %s", c.Name, c.BodyRegex, body))
+		}
+	} else {
+		// no success_codes or body_regex defined, only pass on 200
+		if resp.StatusCode == http.StatusOK {
+			return nil
+		} else {
+			return gerrors.New(fmt.Sprintf("http check %s wanted status code 200 got %d", c.Name, resp.StatusCode))
 		}
 	}
 }

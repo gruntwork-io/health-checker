@@ -35,7 +35,7 @@ checking more conditions than a just single port or HTTP request while still all
 
 ## How It Works
 
-When `health-checker` is started, it will parse a YAML file specified with the `--checks` option (see [examples folder](examples/)) 
+When `health-checker` is started, it will parse a YAML file specified with the `--config` option (see [examples folder](examples/)) 
 and listen for inbound HTTP requests for any URL on the IP address and port specified by `--listener`. When it receives a request, 
 it will evaluate all checks and return `HTTP 200 OK` if all checks pass. If any of the checks fail, it will return `HTTP 504 GATEWAY TIMEOUT`.
 
@@ -61,13 +61,13 @@ health-checker [options]
 | Option | Description | Default 
 | ------ | ----------- | -------
 | `--listener` |  The IP address and port on which inbound HTTP connections will be accepted. | `0.0.0.0:5000`
-| `--checks` | A YAML file containing checks which will be evaluated | `health-checks.yml`
+| `--config` | A YAML file containing checks which will be evaluated | `health-checks.yml`
 | `--log-level` | Set the log level to LEVEL. Must be one of: `panic`, `fatal`, `error,` `warning`, `info`, or `debug` | `info` 
 | `--help` | Show the help screen | | 
 | `--version` | Show the program's version | | 
 
 ```
-health-checker --listener "0.0.0.0:6000" --checks "my-checks.yml" --log-level "warning"
+health-checker --listener "0.0.0.0:6000" --config "my-checks.yml" --log-level "warning"
 ```
 
 ##### Examples
