@@ -70,6 +70,54 @@ health-checker [options]
 health-checker --listener "0.0.0.0:6000" --config "my-checks.yml" --log-level "warning"
 ```
 
+#### Configuration
+
+##### tcp
+| Key     | Description 
+| ------- | ----------- 
+| `name`  | (Required) Name of the health check
+| `host`  | (Required) IP or hostname to check
+| `port`  | (Required) `port` to check on `host`
+
+```yaml
+tcp:
+  - name: tcpService1
+    host: localhost
+    port: 5500
+```
+
+##### http
+| Key            | Description
+| -------------- | -----------
+| `name`         | (Required) Name of the health check
+| `host`         | (Required) IP or hostname to check
+| `port`         | (Required) `port` to check on `host`
+| `status_codes` | An array of status codes which should PASS health check
+| `body_regex`   | **Will not be checked if `status_codes` specified** - A string to search for in the body of the response, if found will pass health check
+
+```yaml
+http:
+  - name: httpService1
+    host: 127.0.0.1
+    port: 8080
+    success_codes: [200, 204, 301, 302]
+  - name: httpService2
+    host: 127.0.0.1
+    port: 8081
+    body_regex: "healthy"
+```
+##### script
+| Key            | Description
+| -------------- | -----------
+| `name`         | (Required) Name of the health check
+| `script`       | (Required) Path to script to run - will PASS if it completes within 5s with a zero exit status
+
+```yaml
+script:
+  - name: scriptCheck1
+    script: /path/to/some/script.sh
+```
+
 ##### Examples
 
 See [examples folder](examples/) for more complete `health-checks.yml` examples.
