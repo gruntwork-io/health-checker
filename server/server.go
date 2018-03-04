@@ -183,7 +183,7 @@ func (c HttpCheck) DoCheck (opts *options.Options) error {
 			return gerrors.New(fmt.Sprintf("http check %s wanted %s in http body got %s", c.Name, c.BodyRegex, body))
 		}
 	} else {
-s_codes or body_regex defined, only pass on 200
+		// no success_codes or body_regex defined, only pass on 200
 		if resp.StatusCode == http.StatusOK {
 			return nil
 		} else {
