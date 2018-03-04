@@ -77,7 +77,12 @@ func parseOptions(cliContext *cli.Context) (*options.Options, error) {
 		return nil, MissingParam(configFlag.Name)
 	}
 
-	checks, err := parseChecksFromConfigFile(configFile, logger)
+	configAsByteSlice, err := parseConfigAsByteSlice(configFile, logger)
+	if err != nil {
+		return nil, err
+	}
+
+	checks, err := parseChecksFromConfig(configAsByteSlice, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -89,18 +94,15 @@ func parseOptions(cliContext *cli.Context) (*options.Options, error) {
 	}, nil
 }
 
-func parseChecksFromConfigFile(configFile string, logger *logrus.Logger) ([]options.Check, error) {
-	configFileAsByteSlice, err := ioutil.ReadFile(configFile)
-	if err != nil {
-		return nil, err
-	}
-
+func parseChecksFromConfig(configAsByteSlice []byte, logger *logrus.Logger) ([]options.Check, error) {
 	var checks Checks
 	var checkSlice []options.Check
 
-	err = yaml.Unmarshal(configFileAsByteSlice, &checks)
-	if err != nil{
-		return nil, err
+	// Use UnmarshalStrict to catch any issues in the config,
+	// such as misspelled keys.
+	err := yaml.UnmarshalStrict(configAsByteSlice, &checks)
+	if err != nil {
+		logger.Fatal(err)
 	}
 
 	if len(checks.TcpChecks) + len(checks.HttpChecks) + len(checks.ScriptChecks) == 0 {
@@ -122,6 +124,14 @@ func parseChecksFromConfigFile(configFile string, logger *logrus.Logger) ([]opti
 	}
 
 	return checkSlice, nil
+}
+
+func parseConfigAsByteSlice(configFile string, logger *logrus.Logger) ([]byte, error) {
+	configAsByteSlice, err := ioutil.ReadFile(configFile)
+	if err != nil {
+		return nil, err
+	}
+	return configAsByteSlice, nil
 }
 
 // Some error types are simple enough that we'd rather just show the error message directly instead of vomiting out a
