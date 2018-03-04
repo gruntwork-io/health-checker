@@ -129,7 +129,9 @@ func parseChecksFromConfig(configAsByteSlice []byte, logger *logrus.Logger) ([]o
 func parseConfigAsByteSlice(configFile string, logger *logrus.Logger) ([]byte, error) {
 	configAsByteSlice, err := ioutil.ReadFile(configFile)
 	if err != nil {
-		return nil, err
+		logger.Fatal(err)
+	} else if len(configAsByteSlice) == 0 {
+		logger.Fatalf("config file: %s is empty", configFile)
 	}
 	return configAsByteSlice, nil
 }
