@@ -73,11 +73,12 @@ health-checker --listener "0.0.0.0:6000" --config "my-checks.yml" --log-level "w
 #### Configuration
 
 ##### tcp
-| Key     | Description 
-| ------- | ----------- 
-| `name`  | (Required) Name of the health check
-| `host`  | (Required) IP or hostname to check
-| `port`  | (Required) `port` to check on `host`
+| Key       | Description 
+| --------- | ----------- 
+| `name`    | (Required) Name of the health check
+| `host`    | (Required) IP or hostname to check
+| `port`    | (Required) `port` to check on `host`
+| `timeout` | Timeout for health check in seconds - if not specified defaults to 5
 
 ```yaml
 tcp:
@@ -92,6 +93,7 @@ tcp:
 | `name`         | (Required) Name of the health check
 | `host`         | (Required) IP or hostname to check
 | `port`         | (Required) `port` to check on `host`
+| `timeout`      | Timeout for health check in seconds - if not specified defaults to 5
 | `status_codes` | An array of status codes which should PASS health check
 | `body_regex`   | **Will not be checked if `status_codes` specified** - A string to search for in the body of the response, if found will pass health check
 
@@ -111,6 +113,7 @@ http:
 | -------------- | -----------
 | `name`         | (Required) Name of the health check
 | `script`       | (Required) Path to script to run - will PASS if it completes within 5s with a zero exit status
+| `timeout`      | Timeout for health check in seconds - if not specified defaults to 5
 
 ```yaml
 script:

@@ -18,10 +18,13 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const DEFAULT_CHECK_TIMEOUT = 5
+
 type TcpCheck struct {
 	Name string `yaml:"name"`
 	Host string `yaml:"host"`
 	Port int `yaml:"port"`
+	Timeout int `yaml:"timeout"`
 }
 
 type HttpCheck struct {
@@ -30,11 +33,13 @@ type HttpCheck struct {
 	Port int `yaml:"port"`
 	SuccessStatusCodes []int `yaml:"success_status_codes"`
 	BodyRegex string `yaml:"body_regex"`
+	Timeout int `yaml:"timeout"`
 }
 
 type ScriptCheck struct {
 	Name string `yaml:"name"`
 	Script string `yaml:"script"`
+	Timeout int `yaml:"timeout"`
 }
 
 type httpResponse struct {
@@ -109,9 +114,13 @@ func (c TcpCheck) DoCheck (opts *options.Options) error {
 	logger := opts.Logger
 	logger.Infof("Attempting to connect to %s at %s:%d via TCP...", c.Name, c.Host, c.Port)
 
-	defaultTimeout := time.Second * 5
+	timeout := time.Second * DEFAULT_CHECK_TIMEOUT
+	if c.Timeout != 0 {
+		// override default with user defined timeout
+		timeout = time.Second * time.Duration(c.Timeout)
+	}
 
-	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", c.Host, c.Port), defaultTimeout)
+	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", c.Host, c.Port), timeout)
 	if err != nil {
 		return err
 	}
@@ -137,9 +146,14 @@ func (c HttpCheck) DoCheck (opts *options.Options) error {
 	logger := opts.Logger
 	logger.Infof("Checking %s at %s:%d via HTTP...", c.Name, c.Host, c.Port)
 
-	defaultTimeout := time.Second * 5
+	timeout := time.Second * DEFAULT_CHECK_TIMEOUT
+	if c.Timeout != 0 {
+		// override default with user defined timeout
+		timeout = time.Second * time.Duration(c.Timeout)
+	}
+
 	client := http.Client{
-		Timeout: defaultTimeout,
+		Timeout: timeout,
 	}
 	resp, err := client.Get(fmt.Sprintf("http://%s:%d", c.Host, c.Port))
 	if err != nil {
@@ -169,7 +183,7 @@ func (c HttpCheck) DoCheck (opts *options.Options) error {
 			return gerrors.New(fmt.Sprintf("http check %s wanted %s in http body got %s", c.Name, c.BodyRegex, body))
 		}
 	} else {
-		// no success_codes or body_regex defined, only pass on 200
+s_codes or body_regex defined, only pass on 200
 		if resp.StatusCode == http.StatusOK {
 			return nil
 		} else {
@@ -202,15 +216,20 @@ func (c ScriptCheck) ValidateCheck (logger *logrus.Logger) {
 }
 
 func (c ScriptCheck) DoCheck (opts *options.Options) error {
-	defaultTimeout := 5*time.Second
-	ctx, cancel := context.WithTimeout(context.Background(), defaultTimeout)
+	timeout := time.Second * DEFAULT_CHECK_TIMEOUT
+	if c.Timeout != 0 {
+		// override default with user defined timeout
+		timeout = time.Second * time.Duration(c.Timeout)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, c.Script)
 	_, err := cmd.Output()
 	if ctx.Err() == context.DeadlineExceeded {
 		// script timed out
-		return gerrors.New(fmt.Sprintf("check %s at %s FAILED to complete within %ds", c.Name, c.Script, defaultTimeout))
+		return gerrors.New(fmt.Sprintf("check %s at %s FAILED to complete within %ds", c.Name, c.Script, timeout))
 	}
 	if err != nil {
 		return gerrors.New(fmt.Sprintf("check %s at %s FAILED with a non-zero exit code", c.Name, c.Script))
