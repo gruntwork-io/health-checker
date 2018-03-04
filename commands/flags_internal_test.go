@@ -1,11 +1,12 @@
 package commands
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
-	"github.com/gruntwork-io/health-checker/options"
 	"github.com/gruntwork-io/gruntwork-cli/logging"
+	"github.com/gruntwork-io/health-checker/options"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -13,9 +14,9 @@ func TestParseChecksFromConfigWithInvalidOrEmptyConfig(t *testing.T) {
 	t.Parallel()
 
 	testCases := []struct {
-		config string
+		config         string
 		expectedChecks []options.Check
-		expectedErr string
+		expectedErr    string
 	}{
 		{
 			``,
@@ -35,9 +36,22 @@ func TestParseChecksFromConfigWithInvalidOrEmptyConfig(t *testing.T) {
 			nil,
 			"unmarshal error",
 		},
+		{
+			`
+http:
+  - name: httpService1
+    host: 127.0.0.1
+    port: 8080
+    success_codes: [200, 204, 301, 302]
+invalidkey:
+  - name: bad
+    description: this should fail`,
+			nil,
+			"unmarshal error",
+		},
 	}
 
-	for _, testCase := range(testCases) {
+	for _, testCase := range testCases {
 		checks, err := parseChecksFromConfigString(testCase.config)
 		if testCase.expectedErr != "" && err == nil {
 			t.Fatalf("Expected error to contain \"%s\" but got checks: %v", testCase.expectedErr, checks)
@@ -46,7 +60,7 @@ func TestParseChecksFromConfigWithInvalidOrEmptyConfig(t *testing.T) {
 	}
 }
 
-func parseChecksFromConfigString(configString string) ([]options.Check, error){
+func parseChecksFromConfigString(configString string) ([]options.Check, error) {
 	logger := logging.GetLogger("TEST")
 	configByteSlice := []byte(configString)
 
