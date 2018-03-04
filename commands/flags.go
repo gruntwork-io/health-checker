@@ -77,7 +77,7 @@ func parseOptions(cliContext *cli.Context) (*options.Options, error) {
 		return nil, MissingParam(configFlag.Name)
 	}
 
-	configAsByteSlice, err := parseConfigAsByteSlice(configFile, logger)
+	configAsByteSlice, err := parseConfigToByteSlice(configFile, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -94,15 +94,15 @@ func parseOptions(cliContext *cli.Context) (*options.Options, error) {
 	}, nil
 }
 
-func parseChecksFromConfig(configAsByteSlice []byte, logger *logrus.Logger) ([]options.Check, error) {
+func parseChecksFromConfig(configByteSlice []byte, logger *logrus.Logger) ([]options.Check, error) {
 	var checks Checks
 	var checkSlice []options.Check
 
 	// Use UnmarshalStrict to catch any issues in the config,
 	// such as misspelled keys.
-	err := yaml.UnmarshalStrict(configAsByteSlice, &checks)
+	err := yaml.UnmarshalStrict(configByteSlice, &checks)
 	if err != nil {
-		logger.Fatal(err)
+		return nil, err
 	}
 
 	if len(checks.TcpChecks) + len(checks.HttpChecks) + len(checks.ScriptChecks) == 0 {
@@ -126,12 +126,10 @@ func parseChecksFromConfig(configAsByteSlice []byte, logger *logrus.Logger) ([]o
 	return checkSlice, nil
 }
 
-func parseConfigAsByteSlice(configFile string, logger *logrus.Logger) ([]byte, error) {
+func parseConfigToByteSlice(configFile string, logger *logrus.Logger) ([]byte, error) {
 	configAsByteSlice, err := ioutil.ReadFile(configFile)
-	if err != nil {
-		logger.Fatal(err)
-	} else if len(configAsByteSlice) == 0 {
-		logger.Fatalf("config file: %s is empty", configFile)
+	if err != nil || len(configAsByteSlice) == 0 {
+		return nil, err
 	}
 	return configAsByteSlice, nil
 }
@@ -158,3 +156,4 @@ type MissingParam string
 func (paramName MissingParam) Error() string {
 	return fmt.Sprintf("Missing required parameter --%s", string(paramName))
 }
+
