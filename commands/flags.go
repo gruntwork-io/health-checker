@@ -46,7 +46,7 @@ var defaultFlags = []cli.Flag{
 	logLevelFlag,
 }
 
-// define structure of yaml file
+// define structure of config file
 type Checks struct {
 	TcpChecks    []server.TcpCheck    `yaml:"tcp"`
 	HttpChecks   []server.HttpCheck   `yaml:"http"`
