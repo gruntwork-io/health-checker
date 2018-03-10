@@ -6,7 +6,7 @@ import (
 
 type Check interface {
 	DoCheck(*Options) error
-	ValidateCheck(*logrus.Logger)
+	ValidateCheck() error
 }
 
 // The options accepted by this CLI tool

@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"fmt"
-	gerrors "errors"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -15,7 +14,6 @@ import (
 
 	"github.com/gruntwork-io/gruntwork-cli/errors"
 	"github.com/gruntwork-io/health-checker/options"
-	"github.com/sirupsen/logrus"
 )
 
 const DEFAULT_CHECK_TIMEOUT = 5
@@ -98,16 +96,17 @@ func checkHealthChecks(opts *options.Options) *httpResponse {
 	}
 }
 
-func (c TcpCheck) ValidateCheck (logger *logrus.Logger) {
+func (c TcpCheck) ValidateCheck () error {
 	if c.Name == "" {
-		missingRequiredKey("tcp","name", logger)
+		return &InvalidCheck{name: "tcp", key: "name"}
 	}
 	if c.Host == "" {
-		missingRequiredKey("tcp","host", logger)
+		return &InvalidCheck{name: c.Name, key: "host"}
 	}
 	if c.Port == 0 {
-		missingRequiredKey("tcp","port", logger)
+		return &InvalidCheck{name: c.Name, key: "port"}
 	}
+	return nil
 }
 
 func (c TcpCheck) DoCheck (opts *options.Options) error {
@@ -122,7 +121,7 @@ func (c TcpCheck) DoCheck (opts *options.Options) error {
 
 	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", c.Host, c.Port), timeout)
 	if err != nil {
-		return err
+		return &CheckFail{name: c.Name, reason: err.Error()}
 	}
 
 	defer conn.Close()
@@ -130,16 +129,17 @@ func (c TcpCheck) DoCheck (opts *options.Options) error {
 	return nil
 }
 
-func (c HttpCheck) ValidateCheck (logger *logrus.Logger) {
+func (c HttpCheck) ValidateCheck () error {
 	if c.Name == "" {
-		missingRequiredKey("http","name", logger)
+		return &InvalidCheck{name: "http", key: "name"}
 	}
 	if c.Host == "" {
-		missingRequiredKey("http","host", logger)
+		return &InvalidCheck{name: c.Name, key: "host"}
 	}
 	if c.Port == 0 {
-		missingRequiredKey("http","port", logger)
+		return &InvalidCheck{name: c.Name, key: "port"}
 	}
+	return nil
 }
 
 func (c HttpCheck) DoCheck (opts *options.Options) error {
@@ -160,36 +160,28 @@ func (c HttpCheck) DoCheck (opts *options.Options) error {
 		return err
 	}
 
-	if len(c.SuccessStatusCodes) > 0 {
-		// when success_codes is defined we only need to check this
-		if contains(c.SuccessStatusCodes, resp.StatusCode) {
-			// Success! response has one of the success_codes
-			return nil
-		} else {
-			return gerrors.New(fmt.Sprintf("http check %s wanted one of %v got %d", c.Name, c.SuccessStatusCodes, resp.Status))
+	switch {
+	case len(c.SuccessStatusCodes) > 0:
+		if !contains(c.SuccessStatusCodes, resp.StatusCode) {
+			return &CheckFail{name: c.Name, reason: fmt.Sprintf("wanted one of %v, got %d", c.SuccessStatusCodes, resp.Status)}
 		}
-	} else if c.BodyRegex != ""{
-		// since no success_codes defined we compare body with body_regex
+	case c.BodyRegex != "":
 		defer resp.Body.Close()
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			return err
+			return &CheckFail{name: c.Name, reason: "failed reading body"}
 		}
 
-		if strings.Contains(string(body), c.BodyRegex) {
-			// Success! resp body has expected string
-			return nil
-		} else {
-			return gerrors.New(fmt.Sprintf("http check %s wanted %s in http body got %s", c.Name, c.BodyRegex, body))
+		if !strings.Contains(string(body), c.BodyRegex) {
+			return &CheckFail{name: c.Name, reason: fmt.Sprintf("wanted %s in http body, got %s", c.BodyRegex, body)}
 		}
-	} else {
+	default:
 		// no success_codes or body_regex defined, only pass on 200
-		if resp.StatusCode == http.StatusOK {
-			return nil
-		} else {
-			return gerrors.New(fmt.Sprintf("http check %s wanted status code 200 got %d", c.Name, resp.StatusCode))
+		if resp.StatusCode != http.StatusOK {
+			return &CheckFail{name: c.Name, reason: fmt.Sprintf("wanted status code 200, got %d", resp.StatusCode)}
 		}
 	}
+	return nil
 }
 
 // TODO: move into helpers
@@ -202,17 +194,14 @@ func contains(s []int, e int) bool {
 	return false
 }
 
-func missingRequiredKey(check string, key string, logger *logrus.Logger) {
-	logger.Fatalf("Failed to parse YAML: %s check missing required key: %s", check, key)
-}
-
-func (c ScriptCheck) ValidateCheck (logger *logrus.Logger) {
+func (c ScriptCheck) ValidateCheck () error {
 	if c.Name == "" {
-		missingRequiredKey("script","name", logger)
+		return &InvalidCheck{name: "script", key: "name"}
 	}
 	if c.Script == "" {
-		missingRequiredKey("script","script", logger)
+		return &InvalidCheck{name: c.Name, key: "script"}
 	}
+	return nil
 }
 
 func (c ScriptCheck) DoCheck (opts *options.Options) error {
@@ -228,11 +217,10 @@ func (c ScriptCheck) DoCheck (opts *options.Options) error {
 	cmd := exec.CommandContext(ctx, c.Script)
 	_, err := cmd.Output()
 	if ctx.Err() == context.DeadlineExceeded {
-		// script timed out
-		return gerrors.New(fmt.Sprintf("check %s at %s FAILED to complete within %ds", c.Name, c.Script, timeout))
+		return &CheckTimeout{name: c.Name, timeout: int(timeout)}
 	}
 	if err != nil {
-		return gerrors.New(fmt.Sprintf("check %s at %s FAILED with a non-zero exit code", c.Name, c.Script))
+		return &CheckFail{name: c.Name, reason: "non-zero exit code"}
 	}
 	return nil
 }
@@ -245,4 +233,30 @@ func writeHttpResponse(w http.ResponseWriter, resp *httpResponse) error {
 	}
 
 	return nil
+}
+
+// custom error types
+type InvalidCheck struct {
+	name, key string
+}
+
+func (e *InvalidCheck) Error() string {
+	return fmt.Sprintf("Invalid check: %s, missing key: %s", string(e.name), string(e.key))
+}
+
+type CheckFail struct {
+	name, reason	string
+}
+
+func (e *CheckFail) Error() string {
+	return fmt.Sprintf("Check Failed: %s failed due to: %s", string(e.name), string(e.reason))
+}
+
+type CheckTimeout struct {
+	name	string
+	timeout int
+}
+
+func (e *CheckTimeout) Error() string {
+	return fmt.Sprintf("Check Timed Out: %s took longer than configured timeout: %ds", string(e.name), int(e.timeout))
 }

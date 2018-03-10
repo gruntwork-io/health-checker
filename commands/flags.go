@@ -77,12 +77,12 @@ func parseOptions(cliContext *cli.Context) (*options.Options, error) {
 		return nil, MissingParam(configFlag.Name)
 	}
 
-	configAsByteSlice, err := parseConfigToByteSlice(configFile, logger)
+	b, err := loadBytes(configFile)
 	if err != nil {
-		return nil, err
+		return nil, InvalidConfigFile(configFile)
 	}
 
-	checks, err := parseChecksFromConfig(configAsByteSlice, logger)
+	checks, err := parseChecksFromConfig(b)
 	if err != nil {
 		return nil, err
 	}
@@ -94,13 +94,13 @@ func parseOptions(cliContext *cli.Context) (*options.Options, error) {
 	}, nil
 }
 
-func parseChecksFromConfig(configByteSlice []byte, logger *logrus.Logger) ([]options.Check, error) {
+func parseChecksFromConfig(b []byte) ([]options.Check, error) {
 	var checks Checks
 	var checkSlice []options.Check
 
 	// Use UnmarshalStrict to catch any issues in the config,
 	// such as misspelled keys.
-	err := yaml.UnmarshalStrict(configByteSlice, &checks)
+	err := yaml.UnmarshalStrict(b, &checks)
 	if err != nil {
 		return nil, err
 	}
@@ -120,18 +120,21 @@ func parseChecksFromConfig(configByteSlice []byte, logger *logrus.Logger) ([]opt
 	}
 
 	for _, check := range checkSlice {
-		check.ValidateCheck(logger)
+		err := check.ValidateCheck()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return checkSlice, nil
 }
 
-func parseConfigToByteSlice(configFile string, logger *logrus.Logger) ([]byte, error) {
-	configAsByteSlice, err := ioutil.ReadFile(configFile)
-	if err != nil || len(configAsByteSlice) == 0 {
+func loadBytes(filename string) ([]byte, error) {
+	b, err := ioutil.ReadFile(filename)
+	if err != nil || len(b) == 0 {
 		return nil, err
 	}
-	return configAsByteSlice, nil
+	return b, nil
 }
 
 // Some error types are simple enough that we'd rather just show the error message directly instead of vomiting out a
@@ -144,6 +147,11 @@ func isDebugMode() bool {
 }
 
 // Custom error types
+type InvalidConfigFile string
+
+func (configFile InvalidConfigFile) Error() string {
+	return fmt.Sprintf("Error while parsing config: %s", string(configFile))
+}
 
 type InvalidLogLevel string
 

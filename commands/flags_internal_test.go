@@ -4,7 +4,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gruntwork-io/gruntwork-cli/logging"
 	"github.com/gruntwork-io/health-checker/options"
 	"github.com/gruntwork-io/health-checker/server"
 	"github.com/stretchr/testify/assert"
@@ -122,10 +121,9 @@ script:
 
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
-			logger := logging.GetLogger("TEST")
 			b := []byte(tc.config)
 
-			checks, err := parseChecksFromConfig(b, logger)
+			checks, err := parseChecksFromConfig(b)
 			if err != nil && tc.err != "" {
 				assert.True(t, strings.Contains(err.Error(), tc.err))
 			} else if err != nil {
@@ -136,3 +134,4 @@ script:
 		})
 	}
 }
+
