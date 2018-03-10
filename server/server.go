@@ -76,10 +76,8 @@ func checkHealthChecks(opts *options.Options) *httpResponse {
 			defer waitGroup.Done()
 			err := check.DoCheck(opts)
 			if err != nil {
-				logger.Warnf("Check for %s FAILED: %s", check, err)
+				logger.Warnf(err.Error())
 				atomic.AddUint64(&failedChecks, 1)
-			} else {
-				logger.Infof("Check for %s successful", check)
 			}
 		}(check)
 	}
@@ -111,7 +109,7 @@ func (c TcpCheck) ValidateCheck () error {
 
 func (c TcpCheck) DoCheck (opts *options.Options) error {
 	logger := opts.Logger
-	logger.Infof("Attempting to connect to %s at %s:%d via TCP...", c.Name, c.Host, c.Port)
+	logger.Infof("Checking %s at %s:%d via TCP...", c.Name, c.Host, c.Port)
 
 	timeout := time.Second * DEFAULT_CHECK_TIMEOUT
 	if c.Timeout != 0 {
@@ -125,7 +123,7 @@ func (c TcpCheck) DoCheck (opts *options.Options) error {
 	}
 
 	defer conn.Close()
-
+	logger.Infof("Check SUCCESS: %s", c.Name)
 	return nil
 }
 
@@ -157,7 +155,7 @@ func (c HttpCheck) DoCheck (opts *options.Options) error {
 	}
 	resp, err := client.Get(fmt.Sprintf("http://%s:%d", c.Host, c.Port))
 	if err != nil {
-		return err
+		return &CheckFail{name: c.Name, reason: err.Error()}
 	}
 
 	switch {
@@ -181,6 +179,8 @@ func (c HttpCheck) DoCheck (opts *options.Options) error {
 			return &CheckFail{name: c.Name, reason: fmt.Sprintf("wanted status code 200, got %d", resp.StatusCode)}
 		}
 	}
+
+	logger.Infof("Check SUCCESS: %s", c.Name)
 	return nil
 }
 
@@ -205,6 +205,9 @@ func (c ScriptCheck) ValidateCheck () error {
 }
 
 func (c ScriptCheck) DoCheck (opts *options.Options) error {
+	logger := opts.Logger
+	logger.Infof("Checking %s at %s...", c.Name, c.Script)
+
 	timeout := time.Second * DEFAULT_CHECK_TIMEOUT
 	if c.Timeout != 0 {
 		// override default with user defined timeout
@@ -222,6 +225,7 @@ func (c ScriptCheck) DoCheck (opts *options.Options) error {
 	if err != nil {
 		return &CheckFail{name: c.Name, reason: "non-zero exit code"}
 	}
+	logger.Infof("Check SUCCESS: %s", c.Name)
 	return nil
 }
 
@@ -249,7 +253,7 @@ type CheckFail struct {
 }
 
 func (e *CheckFail) Error() string {
-	return fmt.Sprintf("Check Failed: %s failed due to: %s", string(e.name), string(e.reason))
+	return fmt.Sprintf("Check FAILED: %s reason: %s", string(e.name), string(e.reason))
 }
 
 type CheckTimeout struct {
@@ -258,5 +262,5 @@ type CheckTimeout struct {
 }
 
 func (e *CheckTimeout) Error() string {
-	return fmt.Sprintf("Check Timed Out: %s took longer than configured timeout: %ds", string(e.name), int(e.timeout))
+	return fmt.Sprintf("Check TIMEOUT: %s took longer than configured timeout: %ds", string(e.name), int(e.timeout))
 }
