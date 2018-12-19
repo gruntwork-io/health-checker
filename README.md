@@ -1,3 +1,5 @@
+[![Maintained by Gruntwork.io](https://img.shields.io/badge/maintained%20by-gruntwork.io-%235849a6.svg)](https://gruntwork.io/?ref=repo_health-checker)
+
 # health-checker
 
 A simple HTTP server that will return `200 OK` if the given TCP ports are all successfully accepting connections.
