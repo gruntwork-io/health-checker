@@ -55,7 +55,8 @@ health-checker [options]
 | `--listener` |  The IP address and port on which inbound HTTP connections will be accepted. | `0.0.0.0:5000`
 | `--log-level` | Set the log level to LEVEL. Must be one of: `panic`, `fatal`, `error,` `warning`, `info`, or `debug` | `info` 
 | `--help` | Show the help screen | | 
-| `--script` | Path to script to run - will PASS if it completes within 5s with a zero exit status | | 
+| `--script` | Path to script to run - will pass if it completes within configured timeout with a zero exit status. Specify one or more times. | | 
+| `--script-timeout` | Timeout, in seconds, to wait for the scripts to exit. Applies to all configured script targets. | `5` |  
 | `--version` | Show the program's version | | 
 
 #### Example 1
@@ -71,20 +72,20 @@ health-checker --listener "0.0.0.0:6000" --port 5432 --port 3306
 #### Example 2
 
 Run a listener on port 6000 that accepts all inbound HTTP connections for any URL. When the request is received,
-attempt to run the script. If exit code is zero, return `HTTP 200 OK`. If any other exit code, return `HTTP
+attempt to open TCP connection to port 5432 and run the script with a 10 second timout. If TCP connection succeeds and script exit code is zero, return `HTTP 200 OK`. If TCP connection fails or non-zero exit code for the script, return `HTTP
 504 Gateway Not Found`.
 
 ```
-health-checker --listener "0.0.0.0:6000" --script /path/to/script.sh
+health-checker --listener "0.0.0.0:6000" --port 5432 --script /path/to/script.sh --script-timeout 10
 ```
 
 #### Example 3
 
 Run a listener on port 6000 that accepts all inbound HTTP connections for any URL. When the request is received,
-attempt to open TCP connection to port 8000 and run the script. If both succeed, return `HTTP 200 OK`. If either fails, return `HTTP
+attempt to run the configured scripts. If both return exit code zero, return `HTTP 200 OK`. If either returns non-zero exit code, return `HTTP
 504 Gateway Not Found`.
 
 ```
-health-checker --listener "0.0.0.0:6000" --port 8000 --script /usr/local/bin/zk-health-check.sh
+health-checker --listener "0.0.0.0:6000" --script "/usr/local/bin/exhibitor-health-check.sh --exhibitor-port 8080" --script "/usr/local/bin/zk-health-check.sh --zk-port 2191"
 ```
 
