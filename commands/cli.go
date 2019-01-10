@@ -34,7 +34,7 @@ func CreateCli(version string) *cli.App {
 	app.HelpName = app.Name
 	app.Author = "Gruntwork, Inc. <www.gruntwork.io> | https://github.com/gruntwork-io/health-checker"
 	app.Version = version
-	app.Usage = "A simple HTTP server that returns a 200 OK when all given TCP ports accept inbound connections."
+	app.Usage = "A simple HTTP server that will return 200 OK if the configured checks are all successful."
 	app.Commands = nil
 	app.Flags = defaultFlags
 	app.Action = runHealthChecker
@@ -52,7 +52,7 @@ func runHealthChecker(cliContext *cli.Context) error {
 		opts.Logger.Infof("Note: To enable debug mode, set %s to \"true\"", ENV_VAR_NAME_DEBUG_MODE)
 		return err
 	}
-	if err != nil  {
+	if err != nil {
 		return errors.WithStackTrace(err)
 	}
 
