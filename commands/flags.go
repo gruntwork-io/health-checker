@@ -73,7 +73,8 @@ func parseOptions(cliContext *cli.Context) (*options.Options, error) {
 
 	ports := cliContext.IntSlice("port")
 
-	scripts := cliContext.StringSlice("script")
+	scriptArr := cliContext.StringSlice("script")
+	scripts := options.ParseScripts(scriptArr)
 
 	if len(ports) == 0 && len(scripts) == 0 {
 		return nil, OneOfParamsRequired{portFlag.Name, scriptFlag.Name}

@@ -59,6 +59,8 @@ health-checker [options]
 | `--script-timeout` | Timeout, in seconds, to wait for the scripts to exit. Applies to all configured script targets. | `5` |  
 | `--version` | Show the program's version | | 
 
+If you execute a shell script, ensure you have a `shebang` line in your script, otherwise the script will fail with an `exec format error`.
+
 #### Example 1
 
 Run a listener on port 6000 that accepts all inbound HTTP connections for any URL. When the request is received,
