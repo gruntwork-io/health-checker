@@ -38,6 +38,12 @@ func TestParseChecksFromConfig(t *testing.T) {
 			"Missing required parameter --listener",
 		},
 		{
+			"invalid listener",
+			[]string{"--listener", "1234", "--port", "4321"},
+			optionsForTest(t, DEFAULT_SCRIPT_TIMEOUT_SEC, []string{}, listenerString(DEFAULT_LISTENER_IP_ADDRESS, 1234), []int{4321}),
+			"",
+		},
+		{
 			"single port",
 			[]string{"--port", "8080"},
 			optionsForTest(t, DEFAULT_SCRIPT_TIMEOUT_SEC, []string{}, defaultListener(), []int{8080}),
