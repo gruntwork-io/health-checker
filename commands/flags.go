@@ -2,21 +2,33 @@ package commands
 
 import (
 	"fmt"
-	"github.com/gruntwork-io/health-checker/options"
 	"github.com/gruntwork-io/gruntwork-cli/logging"
-	"github.com/urfave/cli"
+	"github.com/gruntwork-io/health-checker/options"
 	"github.com/sirupsen/logrus"
+	"github.com/urfave/cli"
 	"os"
 	"strings"
 )
 
 const DEFAULT_LISTENER_IP_ADDRESS = "0.0.0.0"
 const DEFAULT_LISTENER_PORT = 5500
+const DEFAULT_SCRIPT_TIMEOUT_SEC = 5
 const ENV_VAR_NAME_DEBUG_MODE = "HEALTH_CHECKER_DEBUG"
 
 var portFlag = cli.IntSliceFlag{
-	Name: "port",
-	Usage: fmt.Sprintf("[Required] The port number on which a TCP connection will be attempted. Specify one or more times. Example: 8000"),
+	Name:  "port",
+	Usage: fmt.Sprintf("[One of port/script Required] The port number on which a TCP connection will be attempted. Specify one or more times. Example: 8000"),
+}
+
+var scriptFlag = cli.StringSliceFlag{
+	Name:  "script",
+	Usage: fmt.Sprintf("[One of port/script Required] The path to script that will be run. Specify one or more times. Example: \"/usr/local/bin/health-check.sh --http-port 8000\""),
+}
+
+var scriptTimeoutFlag = cli.IntFlag{
+	Name:  "script-timeout",
+	Usage: fmt.Sprintf("[Optional] Timeout, in seconds, to wait for the scripts to complete. Example: 10"),
+	Value: DEFAULT_SCRIPT_TIMEOUT_SEC,
 }
 
 var listenerFlag = cli.StringFlag{
@@ -33,6 +45,8 @@ var logLevelFlag = cli.StringFlag{
 
 var defaultFlags = []cli.Flag{
 	portFlag,
+	scriptFlag,
+	scriptTimeoutFlag,
 	listenerFlag,
 	logLevelFlag,
 }
@@ -58,9 +72,15 @@ func parseOptions(cliContext *cli.Context) (*options.Options, error) {
 	logger.SetLevel(level)
 
 	ports := cliContext.IntSlice("port")
-	if len(ports) == 0 {
-		return nil, MissingParam(portFlag.Name)
+
+	scriptArr := cliContext.StringSlice("script")
+	scripts := options.ParseScripts(scriptArr)
+
+	if len(ports) == 0 && len(scripts) == 0 {
+		return nil, OneOfParamsRequired{portFlag.Name, scriptFlag.Name}
 	}
+
+	scriptTimeout := cliContext.Int("script-timeout")
 
 	listener := cliContext.String("listener")
 	if listener == "" {
@@ -68,9 +88,11 @@ func parseOptions(cliContext *cli.Context) (*options.Options, error) {
 	}
 
 	return &options.Options{
-		Ports:          ports,
-		Listener:       listener,
-		Logger:         logger,
+		Ports:         ports,
+		Scripts:       scripts,
+		ScriptTimeout: scriptTimeout,
+		Listener:      listener,
+		Logger:        logger,
 	}, nil
 }
 
@@ -95,4 +117,13 @@ type MissingParam string
 
 func (paramName MissingParam) Error() string {
 	return fmt.Sprintf("Missing required parameter --%s", string(paramName))
+}
+
+type OneOfParamsRequired struct {
+	param1 string
+	param2 string
+}
+
+func (paramNames OneOfParamsRequired) Error() string {
+	return fmt.Sprintf("Missing required parameter, one of --%s / --%s required", string(paramNames.param1), string(paramNames.param2))
 }
