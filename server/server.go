@@ -61,11 +61,15 @@ func runChecks(opts *options.Options) *httpResponse {
 	for _, script := range opts.Scripts {
 		waitGroup.Add(1)
 		go func(script options.Script) {
+
+			defer waitGroup.Done()
+
 			logger.Infof("Executing '%v' with a timeout of %v seconds...", script, opts.ScriptTimeout)
 
 			timeout := time.Second * time.Duration(opts.ScriptTimeout)
 
 			ctx, cancel := context.WithTimeout(context.Background(), timeout)
+
 			defer cancel()
 
 			cmd := exec.CommandContext(ctx, script.Name, script.Args...)
@@ -79,8 +83,6 @@ func runChecks(opts *options.Options) *httpResponse {
 			} else {
 				logger.Infof("Script %v successful", script)
 			}
-
-			waitGroup.Done()
 		}(script)
 	}
 

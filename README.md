@@ -15,7 +15,7 @@ a single TCP port, or an HTTP(S) endpoint. As a result, our use case just isn't 
 We wrote health-checker so that we could run a daemon on the server that reports the true health of the server by
 attempting to open a TCP connection to more than one port when it receives an inbound HTTP request on the given listener.
 
-Using the `--script` -option, the `health-checker` can be extended to check many other targets. One concrete exeample is monitoring
+Using the `--script` -option, the `health-checker` can be extended to check many other targets. One concrete example is monitoring
 `ZooKeeper` node status during rolling deployment. Just polling the `ZooKeeper`'s TCP client port doesn't necessarily guarantee
 that the node has (re-)joined the cluster. Using the `health-check` with a custom script target, we can 
 [monitor ZooKeeper](https://zookeeper.apache.org/doc/r3.4.8/zookeeperAdmin.html#sc_monitoring) using the 
