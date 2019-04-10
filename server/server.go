@@ -35,17 +35,26 @@ func httpHandler(opts *options.Options) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		var resp *httpResponse
+		logger := opts.Logger
 
 		// In Singleflight mode only one runChecks pass will be performed
 		// at any given time, with the result being shared across concurrent
 		// inbound requests
 		if opts.Singleflight {
-			result, _, _ := group.Do("check", func() (interface{}, error) {
+			logger.Infof("Received inbound request. Performing singleflight health checks...")
+
+			result, _, shared := group.Do("check", func() (interface{}, error) {
+				logger.Infof("Beginning health checks...")
 				return runChecks(opts), nil
 			})
 
+			if shared {
+				logger.Infof("Singleflight health check response was shared between multiple requests.")
+			}
+
 			resp = result.(*httpResponse)
 		} else {
+			logger.Infof("Received inbound request. Beginning health checks...")
 			resp = runChecks(opts)
 		}
 
@@ -60,8 +69,6 @@ func httpHandler(opts *options.Options) http.HandlerFunc {
 // Check that we can open a TPC connection to all the ports in opts.Ports
 func runChecks(opts *options.Options) *httpResponse {
 	logger := opts.Logger
-	logger.Infof("Received inbound request. Beginning health checks...")
-
 	allChecksOk := true
 
 	var waitGroup = sync.WaitGroup{}
