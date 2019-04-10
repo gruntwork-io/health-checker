@@ -2,12 +2,13 @@ package commands
 
 import (
 	"fmt"
+	"os"
+	"strings"
+
 	"github.com/gruntwork-io/gruntwork-cli/logging"
 	"github.com/gruntwork-io/health-checker/options"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
-	"os"
-	"strings"
 )
 
 const DEFAULT_LISTENER_IP_ADDRESS = "0.0.0.0"
@@ -31,6 +32,11 @@ var scriptTimeoutFlag = cli.IntFlag{
 	Value: DEFAULT_SCRIPT_TIMEOUT_SEC,
 }
 
+var singleflightFlag = cli.BoolFlag{
+	Name:  "singleflight",
+	Usage: fmt.Sprintf("[Optional] Enable singleflight mode, which makes concurrent requests share the same check."),
+}
+
 var listenerFlag = cli.StringFlag{
 	Name:  "listener",
 	Usage: fmt.Sprintf("[Optional] The IP address and port on which inbound HTTP connections will be accepted."),
@@ -47,6 +53,7 @@ var defaultFlags = []cli.Flag{
 	portFlag,
 	scriptFlag,
 	scriptTimeoutFlag,
+	singleflightFlag,
 	listenerFlag,
 	logLevelFlag,
 }
@@ -80,6 +87,8 @@ func parseOptions(cliContext *cli.Context) (*options.Options, error) {
 		return nil, OneOfParamsRequired{portFlag.Name, scriptFlag.Name}
 	}
 
+	singleflight := cliContext.Bool("singleflight")
+
 	scriptTimeout := cliContext.Int("script-timeout")
 
 	listener := cliContext.String("listener")
@@ -91,6 +100,7 @@ func parseOptions(cliContext *cli.Context) (*options.Options, error) {
 		Ports:         ports,
 		Scripts:       scripts,
 		ScriptTimeout: scriptTimeout,
+		Singleflight:  singleflight,
 		Listener:      listener,
 		Logger:        logger,
 	}, nil

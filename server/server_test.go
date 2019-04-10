@@ -1,14 +1,20 @@
 package server
 
 import (
+	"io/ioutil"
+	"net"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"sync"
+	"sync/atomic"
+	"testing"
+
 	"github.com/gruntwork-io/gruntwork-cli/logging"
 	"github.com/gruntwork-io/health-checker/options"
 	"github.com/gruntwork-io/health-checker/test"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
-	"net"
-	"os"
-	"testing"
 )
 
 func TestParseChecksFromConfig(t *testing.T) {
@@ -127,7 +133,7 @@ func TestParseChecksFromConfig(t *testing.T) {
 				listeners = append(listeners, l)
 
 				// Separate goroutine for the tcp listeners
-				go handleRequests(t, l)
+				go handleRequests(t, l, nil)
 			}
 
 			defer closeListeners(t, listeners)
@@ -137,6 +143,78 @@ func TestParseChecksFromConfig(t *testing.T) {
 			// Run the checks and verify the status code
 			response := runChecks(opts)
 			assert.True(t, testCase.expectedStatus == response.StatusCode, "Got expected status code")
+		})
+	}
+}
+
+func TestSingleflight(t *testing.T) {
+
+	testCases := []struct {
+		name                 string
+		singleflight         bool
+		expectedRequestCount int32
+	}{
+		{
+			"singleflight disabled",
+			false,
+			10,
+		},
+		{
+			"singleflight enabled",
+			true,
+			1,
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			requestCount := int32(0)
+
+			ports, err := test.GetFreePorts(1)
+			if err != nil {
+				assert.FailNow(t, "Failed to get free ports: %v", err.Error())
+			}
+
+			port := ports[0]
+			t.Logf("Creating listener for port %d", port)
+			l, err := net.Listen("tcp", test.ListenerString(test.DEFAULT_LISTENER_ADDRESS, port))
+			if err != nil {
+				t.Logf("Error creating listener for port %d: %s", port, err.Error())
+				assert.FailNow(t, "Failed to start listening: %s", err.Error())
+			}
+
+			// Accept incoming connections, and count how many we receive
+			go handleRequests(t, l, &requestCount)
+			defer l.Close()
+
+			// Fire the request off to /bin/sleep to ensure it takes a while
+			opts := createOptionsForTest(t, 10, []string{"/bin/sleep 1"}, test.DEFAULT_LISTENER_ADDRESS, []int{port})
+			opts.Singleflight = testCase.singleflight
+
+			handler := httpHandler(opts)
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				handler.ServeHTTP(w, r)
+			}))
+			defer ts.Close()
+
+			// Fire off 10 concurrent requests. In Singleflight mode only one
+			// underyling check should be performed.
+			var wg sync.WaitGroup
+			wg.Add(10)
+			for i := 0; i < 10; i++ {
+				go func() {
+					resp, err := http.Get(ts.URL)
+					if err != nil {
+						assert.FailNow(t, "failed to perform HTTP request: %v", err)
+					}
+
+					ioutil.ReadAll(resp.Body)
+					wg.Done()
+				}()
+			}
+			wg.Wait()
+
+			assert.Equal(t, testCase.expectedRequestCount, requestCount)
 		})
 	}
 
@@ -151,7 +229,7 @@ func closeListeners(t *testing.T, listeners []net.Listener) {
 	}
 }
 
-func handleRequests(t *testing.T, l net.Listener) {
+func handleRequests(t *testing.T, l net.Listener, counter *int32) {
 	for {
 		// Listen for an incoming connection.
 		l.Accept()
@@ -162,6 +240,10 @@ func handleRequests(t *testing.T, l net.Listener) {
 		//if err != nil {
 		//	t.Logf("Error accepting: %s", err.Error())
 		//}
+
+		if counter != nil {
+			atomic.AddInt32(counter, 1)
+		}
 	}
 }
 

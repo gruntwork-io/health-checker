@@ -1,8 +1,9 @@
 package options
 
 import (
-	"github.com/sirupsen/logrus"
 	"strings"
+
+	"github.com/sirupsen/logrus"
 )
 
 // The options accepted by this CLI tool
@@ -10,6 +11,7 @@ type Options struct {
 	Ports         []int
 	Scripts       []Script
 	ScriptTimeout int
+	Singleflight  bool
 	Listener      string
 	Logger        *logrus.Logger
 }
