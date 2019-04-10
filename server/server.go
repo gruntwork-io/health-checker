@@ -3,13 +3,15 @@ package server
 import (
 	"context"
 	"fmt"
-	"github.com/gruntwork-io/gruntwork-cli/errors"
-	"github.com/gruntwork-io/health-checker/options"
 	"net"
 	"net/http"
 	"os/exec"
 	"sync"
 	"time"
+
+	"github.com/gruntwork-io/gruntwork-cli/errors"
+	"github.com/gruntwork-io/health-checker/options"
+	"golang.org/x/sync/singleflight"
 )
 
 type httpResponse struct {
@@ -18,20 +20,41 @@ type httpResponse struct {
 }
 
 func StartHttpServer(opts *options.Options) error {
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		resp := runChecks(opts)
-		err := writeHttpResponse(w, resp)
-		if err != nil {
-			opts.Logger.Error("Failed to send HTTP response. Exiting.")
-			panic(err)
-		}
-	})
+	http.HandleFunc("/", httpHandler(opts))
+
 	err := http.ListenAndServe(opts.Listener, nil)
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func httpHandler(opts *options.Options) http.HandlerFunc {
+	var group singleflight.Group
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		var resp *httpResponse
+
+		// In Singleflight mode only one runChecks pass will be performed
+		// at any given time, with the result being shared across concurrent
+		// inbound requests
+		if opts.Singleflight {
+			result, _, _ := group.Do("check", func() (interface{}, error) {
+				return runChecks(opts), nil
+			})
+
+			resp = result.(*httpResponse)
+		} else {
+			resp = runChecks(opts)
+		}
+
+		err := writeHttpResponse(w, resp)
+		if err != nil {
+			opts.Logger.Error("Failed to send HTTP response. Exiting.")
+			panic(err)
+		}
+	}
 }
 
 // Check that we can open a TPC connection to all the ports in opts.Ports
