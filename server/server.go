@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gruntwork-io/gruntwork-cli/errors"
+	"github.com/gruntwork-io/go-commons/errors"
 	"github.com/gruntwork-io/health-checker/options"
 	"golang.org/x/sync/singleflight"
 )

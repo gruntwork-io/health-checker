@@ -10,7 +10,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/gruntwork-io/gruntwork-cli/logging"
+	"github.com/gruntwork-io/go-commons/logging"
 	"github.com/gruntwork-io/health-checker/options"
 	"github.com/gruntwork-io/health-checker/test"
 	"github.com/sirupsen/logrus"

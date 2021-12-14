@@ -1,7 +1,7 @@
 package commands
 
 import (
-	"github.com/gruntwork-io/gruntwork-cli/errors"
+	"github.com/gruntwork-io/go-commons/errors"
 	"github.com/gruntwork-io/health-checker/server"
 	"github.com/urfave/cli"
 )
