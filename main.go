@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/gruntwork-io/gruntwork-cli/entrypoint"
+	"github.com/gruntwork-io/go-commons/entrypoint"
 	"github.com/gruntwork-io/health-checker/commands"
 )
 

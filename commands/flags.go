@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/gruntwork-io/gruntwork-cli/logging"
+	"github.com/gruntwork-io/go-commons/logging"
 	"github.com/gruntwork-io/health-checker/options"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
