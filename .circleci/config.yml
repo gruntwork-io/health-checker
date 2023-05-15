@@ -17,12 +17,14 @@ jobs:
       - run: build-go-binaries --src-path . --app-name health-checker --dest-path bin --ld-flags "-X main.VERSION=$CIRCLE_TAG"
       - persist_to_workspace:
           root: .
-          paths: bin
+          paths: 
+            - bin
 
   deploy:
     <<: *defaults
     steps:
-      - checkout
+      - attach_workspace:
+          at: bin
       - run: cd bin && sha256sum * > SHA256SUMS
       - run: upload-github-release-assets bin/*
 
