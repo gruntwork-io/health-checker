@@ -24,7 +24,7 @@ jobs:
     <<: *defaults
     steps:
       - attach_workspace:
-          at: bin
+          at: .
       - run: cd bin && sha256sum * > SHA256SUMS
       - run: upload-github-release-assets bin/*
 
