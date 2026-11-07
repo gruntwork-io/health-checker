@@ -1,8 +1,8 @@
 defaults: &defaults
   docker:
-    - image: 087285199408.dkr.ecr.us-east-1.amazonaws.com/circle-ci-test-image-base:go1.16-go111module
+    - image: 087285199408.dkr.ecr.us-east-1.amazonaws.com/circle-ci-test-image-base:go1.26.0-tf1.5-tg58.8-pck1.8-ci58.2
 
-version: 2
+version: 2.1
 jobs:
   test:
     <<: *defaults
@@ -29,7 +29,6 @@ jobs:
       - run: upload-github-release-assets bin/*
 
 workflows:
-  version: 2
   build-and-test:
     jobs:
       - test:
