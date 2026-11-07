@@ -10,7 +10,6 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/gruntwork-io/go-commons/logging"
 	"github.com/gruntwork-io/health-checker/options"
 	"github.com/gruntwork-io/health-checker/test"
 	"github.com/sirupsen/logrus"
@@ -248,7 +247,7 @@ func handleRequests(t *testing.T, l net.Listener, counter *int32) {
 }
 
 func createOptionsForTest(t *testing.T, scriptTimeout int, scripts []string, listener string, ports []int) *options.Options {
-	logger := logging.GetLogger("health-checker")
+	logger := logrus.New()
 	logger.Out = os.Stdout
 	logger.Level = logrus.InfoLevel
 

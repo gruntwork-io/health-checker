@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"github.com/gruntwork-io/go-commons/errors"
 	"github.com/gruntwork-io/health-checker/server"
 	"github.com/urfave/cli"
 )
@@ -53,7 +52,7 @@ func runHealthChecker(cliContext *cli.Context) error {
 		return err
 	}
 	if err != nil {
-		return errors.WithStackTrace(err)
+		return err
 	}
 	if len(opts.Ports) > 0 {
 		opts.Logger.Infof("The Health Check will attempt to connect to the following ports via TCP: %v", opts.Ports)
@@ -62,10 +61,5 @@ func runHealthChecker(cliContext *cli.Context) error {
 		opts.Logger.Infof("The Health Check will attempt to run the following scripts: %v", opts.Scripts)
 	}
 	opts.Logger.Infof("Listening on Port %s...", opts.Listener)
-	err = server.StartHttpServer(opts)
-	if err != nil {
-		return errors.WithStackTrace(err)
-	}
-
-	return nil
+	return server.StartHttpServer(opts)
 }

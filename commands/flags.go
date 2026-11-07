@@ -5,7 +5,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/gruntwork-io/go-commons/logging"
 	"github.com/gruntwork-io/health-checker/options"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
@@ -66,7 +65,8 @@ func allCliOptionsEmpty(cliContext *cli.Context) bool {
 
 // Parse and validate all CLI options
 func parseOptions(cliContext *cli.Context) (*options.Options, error) {
-	logger := logging.GetLogger("health-checker")
+	logger := logrus.New()
+	logger.SetFormatter(&logrus.TextFormatter{FullTimestamp: true})
 
 	// By default logrus logs to stderr. But since most output in this tool is informational, we default to stdout.
 	logger.Out = os.Stdout

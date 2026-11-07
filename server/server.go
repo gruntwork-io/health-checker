@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gruntwork-io/go-commons/errors"
 	"github.com/gruntwork-io/health-checker/options"
 	"golang.org/x/sync/singleflight"
 )
@@ -148,7 +147,7 @@ func writeHttpResponse(w http.ResponseWriter, resp *httpResponse) error {
 	w.WriteHeader(resp.StatusCode)
 	_, err := w.Write([]byte(resp.Body))
 	if err != nil {
-		return errors.WithStackTrace(err)
+		return err
 	}
 
 	return nil
