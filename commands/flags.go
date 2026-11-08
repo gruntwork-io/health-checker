@@ -3,7 +3,6 @@ package commands
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/gruntwork-io/health-checker/options"
 	"github.com/sirupsen/logrus"
@@ -13,7 +12,6 @@ import (
 const DEFAULT_LISTENER_IP_ADDRESS = "0.0.0.0"
 const DEFAULT_LISTENER_PORT = 5500
 const DEFAULT_SCRIPT_TIMEOUT_SEC = 5
-const ENV_VAR_NAME_DEBUG_MODE = "HEALTH_CHECKER_DEBUG"
 
 var portFlag = cli.IntSliceFlag{
 	Name:  "port",
@@ -104,15 +102,6 @@ func parseOptions(cliContext *cli.Context) (*options.Options, error) {
 		Listener:      listener,
 		Logger:        logger,
 	}, nil
-}
-
-// Some error types are simple enough that we'd rather just show the error message directly instead of vomiting out a
-// whole stack trace in log output. Therefore, allow a debug mode that always shows full stack traces. Otherwise, show
-// simple messages.
-func isDebugMode() bool {
-	envVar, _ := os.LookupEnv(ENV_VAR_NAME_DEBUG_MODE)
-	envVar = strings.ToLower(envVar)
-	return envVar == "true"
 }
 
 // Custom error types

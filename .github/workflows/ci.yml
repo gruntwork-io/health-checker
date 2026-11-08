@@ -68,4 +68,9 @@ jobs:
           if ! gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
             gh release create "$RELEASE_TAG" --verify-tag --draft --title "$RELEASE_TAG" --notes ""
           fi
-          gh release upload "$RELEASE_TAG" bin/* --clobber
+          existing="$(gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name')"
+          for file in bin/*; do
+            if ! grep -qxF "$(basename "$file")" <<< "$existing"; then
+              gh release upload "$RELEASE_TAG" "$file"
+            fi
+          done
