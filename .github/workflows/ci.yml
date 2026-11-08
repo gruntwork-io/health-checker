@@ -3,9 +3,8 @@ name: CI
 on:
   push:
     branches: [master]
+    tags: ["v*"]
   pull_request:
-  release:
-    types: [published]
 
 permissions:
   contents: read
@@ -34,7 +33,7 @@ jobs:
       - name: Build binaries
         env:
           CGO_ENABLED: "0"
-          VERSION: ${{ github.event.release.tag_name }}
+          VERSION: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
         run: |
           for target in darwin/amd64 darwin/arm64 linux/386 linux/amd64 linux/arm64 windows/386 windows/amd64; do
             os="${target%/*}"
@@ -49,7 +48,7 @@ jobs:
           path: bin
 
   release:
-    if: github.event_name == 'release'
+    if: github.ref_type == 'tag'
     needs: build
     runs-on: ubuntu-latest
     permissions:
@@ -64,4 +63,4 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-        run: gh release upload "${{ github.event.release.tag_name }}" bin/* --clobber
+        run: gh release upload "${{ github.ref_name }}" bin/* --clobber
