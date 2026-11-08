@@ -20,7 +20,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
-      - run: go test -v ./...
+      - run: go test -race -v ./...
 
   build:
     needs: test
@@ -33,7 +33,7 @@ jobs:
       - name: Build binaries
         env:
           CGO_ENABLED: "0"
-          VERSION: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+          VERSION: ${{ github.ref_type == 'tag' && github.ref_name || github.sha }}
         run: |
           for target in darwin/amd64 darwin/arm64 linux/386 linux/amd64 linux/arm64 windows/386 windows/amd64; do
             os="${target%/*}"
@@ -58,9 +58,14 @@ jobs:
         with:
           name: bin
           path: bin
-      - run: cd bin && sha256sum * > SHA256SUMS
+      - run: cd bin && sha256sum -- * > SHA256SUMS
       - name: Upload release assets
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-        run: gh release upload "${{ github.ref_name }}" bin/* --clobber
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          if ! gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
+            gh release create "$RELEASE_TAG" --verify-tag --draft --title "$RELEASE_TAG" --notes ""
+          fi
+          gh release upload "$RELEASE_TAG" bin/* --clobber

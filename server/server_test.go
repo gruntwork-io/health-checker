@@ -213,7 +213,7 @@ func TestSingleflight(t *testing.T) {
 			}
 			wg.Wait()
 
-			assert.Equal(t, testCase.expectedRequestCount, requestCount)
+			assert.Equal(t, testCase.expectedRequestCount, atomic.LoadInt32(&requestCount))
 		})
 	}
 

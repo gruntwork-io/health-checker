@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os/exec"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/gruntwork-io/health-checker/options"
@@ -68,7 +69,7 @@ func httpHandler(opts *options.Options) http.HandlerFunc {
 // Check that we can open a TPC connection to all the ports in opts.Ports
 func runChecks(opts *options.Options) *httpResponse {
 	logger := opts.Logger
-	allChecksOk := true
+	var failedChecks int32
 
 	var waitGroup = sync.WaitGroup{}
 
@@ -78,7 +79,7 @@ func runChecks(opts *options.Options) *httpResponse {
 			err := attemptTcpConnection(port, opts)
 			if err != nil {
 				logger.Warnf("TCP connection to port %d FAILED: %s", port, err)
-				allChecksOk = false
+				atomic.AddInt32(&failedChecks, 1)
 			} else {
 				logger.Infof("TCP connection to port %d successful", port)
 			}
@@ -108,7 +109,7 @@ func runChecks(opts *options.Options) *httpResponse {
 			if err != nil {
 				logger.Warnf("Script %v FAILED: %s", script.Name, err)
 				logger.Warnf("Command output: %s", output)
-				allChecksOk = false
+				atomic.AddInt32(&failedChecks, 1)
 			} else {
 				logger.Infof("Script %v successful", script)
 			}
@@ -117,7 +118,7 @@ func runChecks(opts *options.Options) *httpResponse {
 
 	waitGroup.Wait()
 
-	if allChecksOk {
+	if failedChecks == 0 {
 		logger.Infof("All health checks passed. Returning HTTP 200 response.\n")
 		return &httpResponse{StatusCode: http.StatusOK, Body: "OK"}
 	} else {

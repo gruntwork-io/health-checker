@@ -47,12 +47,11 @@ func runHealthChecker(cliContext *cli.Context) error {
 	}
 
 	opts, err := parseOptions(cliContext)
-	if isDebugMode() {
-		opts.Logger.Infof("Note: To enable debug mode, set %s to \"true\"", ENV_VAR_NAME_DEBUG_MODE)
-		return err
-	}
 	if err != nil {
 		return err
+	}
+	if isDebugMode() {
+		opts.Logger.Infof("Note: To enable debug mode, set %s to \"true\"", ENV_VAR_NAME_DEBUG_MODE)
 	}
 	if len(opts.Ports) > 0 {
 		opts.Logger.Infof("The Health Check will attempt to connect to the following ports via TCP: %v", opts.Ports)
