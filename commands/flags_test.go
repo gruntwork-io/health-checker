@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"bytes"
 	"flag"
 	"github.com/gruntwork-io/health-checker/options"
 	"github.com/gruntwork-io/health-checker/test"
@@ -131,4 +132,27 @@ func createOptionsForTest(t *testing.T, scriptTimeout int, scripts []string, lis
 	opts.Listener = listener
 	opts.Ports = ports
 	return opts
+}
+
+func TestMissingListenerValueFails(t *testing.T) {
+	t.Parallel()
+
+	app := CreateCli("0.0.0")
+	app.Writer = &bytes.Buffer{}
+	app.ErrWriter = &bytes.Buffer{}
+
+	err := app.Run([]string{"health-checker", "--port", "8080", "--listener"})
+	assert.Error(t, err)
+}
+
+func TestLogLinesHavePrefix(t *testing.T) {
+	t.Parallel()
+
+	opts, err := parseOptions(createContextForTesting([]string{"--port", "8080"}))
+	assert.NoError(t, err)
+
+	var out bytes.Buffer
+	opts.Logger.Out = &out
+	opts.Logger.Info("hello")
+	assert.True(t, strings.HasPrefix(out.String(), "[health-checker] "), "log line %q has no prefix", out.String())
 }

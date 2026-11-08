@@ -50,6 +50,7 @@ jobs:
     runs-on: ubuntu-latest
     concurrency:
       group: release-${{ github.ref }}
+      queue: max
       cancel-in-progress: false
     permissions:
       contents: write
@@ -70,6 +71,13 @@ jobs:
           fi
           existing="$(gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name')"
           cd bin
+          if grep -qxF SHA256SUMS <<< "$existing"; then
+            gh release download "$RELEASE_TAG" --pattern SHA256SUMS --output "$RUNNER_TEMP/SHA256SUMS" --clobber
+            if ! cmp -s SHA256SUMS "$RUNNER_TEMP/SHA256SUMS"; then
+              echo "::error::This build does not match the SHA256SUMS on the release. Delete the release assets and rerun."
+              exit 1
+            fi
+          fi
           # SHA256SUMS goes last so that a release only lists checksums once every binary is uploaded.
           for file in health-checker_* SHA256SUMS; do
             if grep -qxF "$file" <<< "$existing"; then
