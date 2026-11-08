@@ -13,6 +13,9 @@ const DEFAULT_LISTENER_IP_ADDRESS = "0.0.0.0"
 const DEFAULT_LISTENER_PORT = 5500
 const DEFAULT_SCRIPT_TIMEOUT_SEC = 5
 
+// Deprecated: HEALTH_CHECKER_DEBUG no longer has any effect.
+const ENV_VAR_NAME_DEBUG_MODE = "HEALTH_CHECKER_DEBUG"
+
 var portFlag = cli.IntSliceFlag{
 	Name:  "port",
 	Usage: fmt.Sprintf("[One of port/script Required] The port number on which a TCP connection will be attempted. Specify one or more times. Example: 8000"),
@@ -64,7 +67,7 @@ func allCliOptionsEmpty(cliContext *cli.Context) bool {
 // Parse and validate all CLI options
 func parseOptions(cliContext *cli.Context) (*options.Options, error) {
 	logger := logrus.New()
-	logger.SetFormatter(&logrus.TextFormatter{FullTimestamp: true})
+	logger.SetFormatter(&prefixFormatter{TextFormatter: logrus.TextFormatter{FullTimestamp: true}})
 
 	// By default logrus logs to stderr. But since most output in this tool is informational, we default to stdout.
 	logger.Out = os.Stdout
@@ -102,6 +105,19 @@ func parseOptions(cliContext *cli.Context) (*options.Options, error) {
 		Listener:      listener,
 		Logger:        logger,
 	}, nil
+}
+
+// prefixFormatter starts every log line with "[health-checker] ", which deployments may filter on.
+type prefixFormatter struct {
+	logrus.TextFormatter
+}
+
+func (f *prefixFormatter) Format(entry *logrus.Entry) ([]byte, error) {
+	line, err := f.TextFormatter.Format(entry)
+	if err != nil {
+		return nil, err
+	}
+	return append([]byte("[health-checker] "), line...), nil
 }
 
 // Custom error types
