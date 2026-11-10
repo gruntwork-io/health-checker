@@ -2,6 +2,50 @@
 
 # health-checker
 
+> ## ⚠️ This repository is archived and no longer maintained
+>
+> `health-checker` has reached the end of its journey. This repository will be archived on GitHub. It will remain
+> available in read-only form so existing users can continue to download released binaries, browse the source, and fork
+> the project if they wish to carry it forward.
+>
+> **What this means:**
+>
+> - No new features, bug fixes, or security patches will be released by Gruntwork.
+> - Issues and pull requests will no longer be reviewed or accepted.
+> - The existing releases and binaries will remain available on the [Releases Page](/../../releases).
+> - The source code is open and can be forked under the terms of the existing [LICENSE](/LICENSE).
+>
+> ### A brief eulogy
+>
+> `health-checker` was born because a load balancer could only ask one question. When it was first written, an AWS load
+> balancer health check could probe a single TCP port or a single HTTP endpoint. That was not enough for the instances
+> we were running: a server in an Auto Scaling Group was healthy only if every process on it was healthy, and a
+> ZooKeeper node was healthy only after it had rejoined the ensemble.
+>
+> `health-checker` sat on the instance and answered the load balancer's HTTP probe with `200 OK` only when every
+> configured check passed: a TCP connection to each `--port`, and a zero exit from each `--script`. Those script checks
+> were how rolling deployments stayed honest. A ZooKeeper four-letter-word script, or an Exhibitor check, could report
+> that the node had actually rejoined the cluster.
+>
+> For years it did that work on the AMIs for Gruntwork's self-managed ZooKeeper and Kafka clusters, started under
+> supervisord at boot and pointed at by the load balancer.
+>
+> ### Why we're archiving it
+>
+> The packages that installed `health-checker` are themselves archived. Gruntwork no longer ships or maintains those
+> self-managed data stores, and nothing we currently maintain depends on this binary. Operators who still run several
+> processes on one instance can keep using the released binaries or fork the project. With no internal dependency
+> driving development, continuing to maintain `health-checker` is no longer the best use of effort — for us or for the
+> community relying on it.
+>
+> Rather than let it slowly bit-rot, we'd rather close it out cleanly: archive the repository, and let it stand as a
+> reference for the era it served.
+>
+> Thank you to everyone who used `health-checker`, filed issues, contributed PRs, or simply trusted it to keep a node
+> in service only when it was actually ready. It was a good run.
+
+---
+
 A simple HTTP server that will return `200 OK` if the configured checks are all successful.  If any of the checks fail,
 it will return `HTTP 504 Gateway Not Found`.
 
